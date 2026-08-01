@@ -1,26 +1,399 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* 基础颜色 */
+  --color-paper-mist: #DDEFE7;
+  --color-paper-warm: #F3F3E6;
+  --color-paper-light: #FBFAF1;
+  --color-ink-deep: #263B35;
+  --color-ink-soft: #64766F;
+  --color-line-soft: #B8CEC4;
+
+  /* 生长色 */
+  --color-sprout-green: #A8C98B;
+  --color-water-blue: #9CCED0;
+  --color-sun-yellow: #E5D58A;
+  --color-moss-green: #7FAE8F;
+  --color-dust-rose: #C98D82;
+
+  /* 类别颜色 */
+  --color-cat-literature: #9FC8BB;
+  --color-cat-psychology: #B9A8C5;
+  --color-cat-history: #D7C68C;
+  --color-cat-social: #93B8C6;
+  --color-cat-economics: #A8BE8A;
+  --color-cat-fiction: #D6A49A;
+  --color-cat-computer: #86A99A;
+
+  /* 字体 */
+  --font-display: "Noto Serif SC", "Source Han Serif SC", serif;
+  --font-body: "Noto Sans SC", "Source Han Sans SC", system-ui, sans-serif;
+  --font-number: Inter, "Noto Sans SC", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html {
+  min-height: 100%;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* 纸张水彩背景 */
+body {
+  background-color: #DCEFE7;
+  color: var(--color-ink-deep);
+  font-family: var(--font-body);
+  background-image:
+    radial-gradient(ellipse at 18% 8%, rgba(98, 176, 180, 0.26) 0%, rgba(98, 176, 180, 0.12) 28%, transparent 56%),
+    radial-gradient(ellipse at 74% 18%, rgba(171, 205, 128, 0.24) 0%, rgba(171, 205, 128, 0.12) 32%, transparent 62%),
+    radial-gradient(ellipse at 52% 48%, rgba(244, 243, 220, 0.78) 0%, rgba(244, 243, 220, 0.34) 34%, transparent 68%),
+    radial-gradient(ellipse at 22% 74%, rgba(124, 197, 201, 0.18) 0%, transparent 54%),
+    radial-gradient(ellipse at 86% 82%, rgba(137, 189, 151, 0.18) 0%, transparent 48%),
+    linear-gradient(90deg, rgba(38, 59, 53, 0.025) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(38, 59, 53, 0.018) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, auto, 46px 46px, 46px 46px;
+}
+
+body::before {
+  background:
+    linear-gradient(180deg, rgba(250, 249, 241, 0.48), rgba(250, 249, 241, 0.12) 42%, rgba(220, 239, 231, 0.2)),
+    radial-gradient(ellipse at 50% 38%, rgba(251, 250, 241, 0.48), transparent 46%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: -2;
+}
+
+body::after {
+  background-image:
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 7px),
+    radial-gradient(circle at 23% 31%, rgba(38, 59, 53, 0.035) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 72% 64%, rgba(38, 59, 53, 0.025) 0 1px, transparent 1.5px);
+  background-size: auto, 22px 22px, 28px 28px;
+  content: "";
+  inset: 0;
+  opacity: 0.72;
+  pointer-events: none;
+  position: fixed;
+  z-index: -1;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+.decorative-stickers {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: fixed;
+  z-index: 0;
+}
+
+.sticker-piece {
+  background-repeat: no-repeat;
+  display: block;
+  mix-blend-mode: multiply;
+  opacity: 0.26;
+  position: absolute;
+  transform-origin: center;
+}
+
+.sticker-paper-page {
+  background-image: url("/sticker/5.png");
+  background-position: -62px -68px;
+  background-size: 350px auto;
+  filter: saturate(0.68) contrast(0.92);
+  height: 330px;
+  left: clamp(-150px, -9vw, -78px);
+  opacity: 0.16;
+  top: 116px;
+  transform: rotate(-3deg);
+  width: 260px;
+}
+
+.sticker-botanical-a {
+  background-image: url("/sticker/2.jpg");
+  background-position: -34px -42px;
+  background-size: 600px auto;
+  filter: saturate(0.62) contrast(0.92);
+  height: 156px;
+  right: clamp(8px, 2.4vw, 44px);
+  top: 104px;
+  transform: rotate(9deg);
+  width: 132px;
+}
+
+.sticker-botanical-b {
+  background-image: url("/sticker/4.png");
+  background-position: -536px -438px;
+  background-size: 560px auto;
+  filter: saturate(0.72) contrast(0.92);
+  height: 260px;
+  left: clamp(-32px, 1.4vw, 34px);
+  opacity: 0.18;
+  top: 54vh;
+  transform: rotate(-8deg);
+  width: 170px;
+}
+
+.sticker-botanical-c {
+  background-image: url("/sticker/5.png");
+  background-position: -462px -568px;
+  background-size: 430px auto;
+  filter: saturate(0.64) contrast(0.9);
+  height: 190px;
+  right: clamp(-24px, 2vw, 34px);
+  bottom: 88px;
+  opacity: 0.2;
+  transform: rotate(-7deg);
+  width: 190px;
+}
+
+.sticker-botanical-d {
+  background-image: url("/sticker/4.png");
+  background-position: -24px -18px;
+  background-size: 430px auto;
+  filter: saturate(0.72) contrast(0.9);
+  height: 138px;
+  left: clamp(-58px, -2vw, -20px);
+  opacity: 0.15;
+  top: 28vh;
+  transform: rotate(8deg);
+  width: 150px;
+}
+
+.sticker-botanical-e {
+  background-image: url("/sticker/2.jpg");
+  background-position: -398px -2380px;
+  background-size: 620px auto;
+  filter: saturate(0.58) contrast(0.88);
+  height: 142px;
+  opacity: 0.17;
+  right: clamp(-42px, -1.6vw, -18px);
+  top: 64vh;
+  transform: rotate(-12deg);
+  width: 132px;
+}
+
+.sticker-tape-a,
+.sticker-tape-b,
+.sticker-tape-c {
+  background-image: url("/sticker/3.png");
+  background-size: 560px auto;
+  filter: saturate(0.78) contrast(0.92);
+  height: 54px;
+  width: 184px;
+}
+
+.sticker-tape-a {
+  background-position: -358px -112px;
+  right: clamp(-84px, -3vw, -28px);
+  top: 34vh;
+  transform: rotate(5deg);
+}
+
+.sticker-tape-b {
+  background-position: -28px -632px;
+  left: clamp(-84px, -4vw, -32px);
+  bottom: 92px;
+  transform: rotate(-4deg);
+}
+
+.sticker-tape-c {
+  background-position: -350px -330px;
+  opacity: 0.18;
+  right: clamp(22px, 4vw, 76px);
+  bottom: 22vh;
+  transform: rotate(-2deg);
+}
+
+.sticker-tape-d {
+  background-image: url("/sticker/3.png");
+  background-position: -28px -420px;
+  background-size: 560px auto;
+  filter: saturate(0.68) contrast(0.9);
+  height: 50px;
+  left: clamp(18px, 3vw, 58px);
+  opacity: 0.16;
+  top: 76vh;
+  transform: rotate(4deg);
+  width: 176px;
+}
+
+.paper-wash {
+  background-color: rgba(243, 243, 230, 0.78);
+  background-image:
+    radial-gradient(ellipse at 18% 18%, rgba(119, 197, 200, 0.2) 0%, transparent 36%),
+    radial-gradient(ellipse at 84% 72%, rgba(169, 205, 130, 0.18) 0%, transparent 40%),
+    linear-gradient(180deg, rgba(251, 250, 241, 0.42), rgba(251, 250, 241, 0.1));
+  backdrop-filter: blur(1px);
+}
+
+.quote-featured {
+  background-color: rgba(250, 249, 241, 0.7);
+  border-color: rgba(184, 206, 196, 0.55);
+}
+
+.ink-label {
+  color: var(--color-ink-soft);
+  font-family: var(--font-number);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.icon-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid rgba(184, 206, 196, 0.65);
+  color: var(--color-ink-soft);
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+  width: 34px;
+}
+
+.icon-button:hover {
+  background: var(--color-paper-light);
+  border-color: var(--color-ink-soft);
+  color: var(--color-ink-deep);
+  transform: translateY(-1px);
+}
+
+.section-rule {
+  border-top: 1px solid rgba(184, 206, 196, 0.5);
+  position: relative;
+}
+
+.section-rule::before {
+  background: linear-gradient(90deg, var(--color-ink-soft), transparent);
+  content: "";
+  height: 1px;
+  left: 0;
+  opacity: 0.25;
+  position: absolute;
+  top: -1px;
+  width: 84px;
+}
+
+.paper-note {
+  box-shadow: inset 0 0 0 1px rgba(184, 206, 196, 0.35), 5px 5px 0 rgba(38, 59, 53, 0.045);
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-soft);
+  border-radius: 3px;
+}
+
+/* 动画 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes growLine {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slideInUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes knowledgePulse {
+  0%, 100% { opacity: 0.16; transform: scale(0.98); }
+  50% { opacity: 0.34; transform: scale(1.08); }
+}
+@keyframes knowledgeDash {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -7; }
+}
+@keyframes revealFloatIn {
+  from {
+    filter: blur(3px);
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out both;
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.35s ease-out both;
+}
+.animate-slide-in-up {
+  animation: slideInUp 0.35s ease-out both;
+}
+
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(22px);
+}
+
+.reveal-on-scroll.is-revealed {
+  animation: revealFloatIn 720ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms) both;
+}
+
+.knowledge-node-halo {
+  animation: knowledgePulse 2.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.knowledge-edge {
+  transition: opacity 180ms ease, stroke-width 180ms ease;
+}
+
+.knowledge-edge-active {
+  animation: knowledgeDash 1.05s linear infinite;
+  stroke-dasharray: 1.6 1.1;
+}
+
+@media (max-width: 860px) {
+  .sticker-piece {
+    opacity: 0.14;
+    transform: scale(0.75);
+  }
+
+  .sticker-botanical-a,
+  .sticker-botanical-d,
+  .sticker-botanical-e,
+  .sticker-tape-a,
+  .sticker-tape-d,
+  .sticker-paper-page {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll,
+  .reveal-on-scroll.is-revealed {
+    animation: none;
+    filter: none;
+    opacity: 1;
+    transform: none;
+  }
 }

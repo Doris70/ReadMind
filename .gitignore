@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+
+# local source sticker sheets; app uses optimized copies in public/sticker
+/sticker/
+/public/stickers/
+sticker1.jpg
+sticker2.jpg
+.tools/
