@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Key, PenLine, Sparkles, Loader2, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, CircleHelp, Key, PenLine, Sparkles, Loader2, Plus, Trash2, X } from 'lucide-react';
+import Image from 'next/image';
 import { loadDemoData } from '@/lib/adapters/demo';
 import { saveUserData } from '@/lib/store';
 import { Book, BookStatus, Category, UserData } from '@/lib/adapters/types';
@@ -52,6 +53,7 @@ export default function SetupPage() {
   const [previewData, setPreviewData] = useState<{ bookCount: number; highlightCount: number } | null>(null);
   const [importedData, setImportedData] = useState<unknown>(null);
   const [manualBooks, setManualBooks] = useState<Book[]>([createManualBook(0)]);
+  const [showApiGuide, setShowApiGuide] = useState(false);
 
   const handleDemo = () => {
     const data = loadDemoData();
@@ -181,6 +183,14 @@ export default function SetupPage() {
                   连接
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowApiGuide(true)}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs text-ink-soft transition-colors hover:text-ink-deep"
+              >
+                <CircleHelp className="h-3.5 w-3.5 text-sprout-green" />
+                如何找到微信读书 API Key？
+              </button>
               {error && <p className="text-dust-rose text-sm mt-2">{error}</p>}
             </div>
 
@@ -285,7 +295,7 @@ export default function SetupPage() {
           </div>
         )}
 
-        {step === 'preview' && previewData && (
+      {step === 'preview' && previewData && (
           <div className="bg-paper-warm rounded-lg p-8 border border-line-soft/30 text-center animate-fade-in">
             <BookOpen className="w-10 h-10 text-sprout-green mx-auto mb-4" />
             <h2 className="text-xl font-medium text-ink-deep mb-2">同步成功</h2>
@@ -310,6 +320,58 @@ export default function SetupPage() {
           </div>
         )}
       </div>
+
+      {showApiGuide && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-deep/35 p-4 backdrop-blur-sm sm:p-8"
+          onClick={() => setShowApiGuide(false)}
+        >
+          <div
+            className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto bg-paper-warm p-5 shadow-[0_24px_80px_rgba(38,59,53,0.24)] sm:p-8"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line-soft/35 bg-paper-warm pb-4">
+              <div>
+                <span className="ink-label">API KEY GUIDE</span>
+                <h2 className="mt-2 text-2xl text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>如何找到微信读书 API Key</h2>
+                <p className="mt-2 text-sm leading-6 text-ink-soft">请按照下面的顺序操作：先进入设置，再打开微信读书 Skill，最后复制 API Key。</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowApiGuide(false)}
+                className="icon-button shrink-0"
+                title="关闭说明"
+                aria-label="关闭说明"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-6 space-y-6">
+              {[
+                { step: '01', title: '进入设置', src: '/sticker/a.jpg' },
+                { step: '02', title: '打开微信读书 Skill', src: '/sticker/b.jpg' },
+                { step: '03', title: '复制 API Key', src: '/sticker/c.jpg' },
+              ].map(item => (
+                <figure key={item.src} className="border border-line-soft/35 bg-paper-light p-3 sm:p-4">
+                  <figcaption className="mb-3 flex items-center gap-3 text-sm text-ink-deep">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sprout-green/20 text-xs text-ink-deep" style={{ fontFamily: 'var(--font-number)' }}>
+                      {item.step}
+                    </span>
+                    {item.title}
+                  </figcaption>
+                  <Image
+                    src={item.src}
+                    alt={`${item.step} ${item.title}`}
+                    width={1206}
+                    height={2436}
+                    className="h-auto max-h-[68vh] w-full object-contain"
+                  />
+                </figure>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
