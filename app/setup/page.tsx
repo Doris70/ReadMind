@@ -3,12 +3,11 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRight, BookOpen, CircleHelp, Key, PenLine, Sparkles, Loader2, Plus, Trash2, X } from 'lucide-react';
 import Image from 'next/image';
 import { loadDemoData } from '@/lib/adapters/demo';
-import { clearManualBooksDraft, isManualBook, loadManualBooksDraft, loadUserData, saveManualBooksDraft, saveUserData } from '@/lib/store';
+import { clearManualBooksDraft, isManualBook, loadManualBooksDraft, loadManualData, loadUserData, saveManualBooksDraft, saveManualData, saveUserData, saveWereadData } from '@/lib/store';
 import { Book, BookStatus, Category, UserData } from '@/lib/adapters/types';
 
 const categories: Category[] = ['文学', '心理', '历史', '社科', '经济理财', '小说', '计算机'];
@@ -52,6 +51,7 @@ export default function SetupPage() {
   const router = useRouter();
   const [step, setStep] = useState<'choose' | 'connecting' | 'preview' | 'manual'>('choose');
   const [existingData, setExistingData] = useState<UserData | null>(null);
+  const [hasManualData, setHasManualData] = useState(false);
   const [setupHydrated, setSetupHydrated] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
@@ -63,8 +63,20 @@ export default function SetupPage() {
   useEffect(() => {
     const stored = loadUserData();
     const draft = loadManualBooksDraft();
-    const savedManualBooks = stored?.books.filter(isManualBook) || [];
+    const storedManualData = loadManualData();
+    const savedManualBooks = storedManualData?.books || stored?.books.filter(isManualBook) || [];
+    if (!storedManualData && stored && savedManualBooks.length > 0) {
+      const manualIds = new Set(savedManualBooks.map(book => book.id));
+      saveManualData({
+        ...stored,
+        books: savedManualBooks,
+        highlights: stored.highlights.filter(highlight => manualIds.has(highlight.bookId)),
+        readingEvents: stored.readingEvents.filter(event => manualIds.has(event.bookId)),
+        source: 'manual',
+      });
+    }
     setExistingData(stored);
+    setHasManualData(savedManualBooks.length > 0);
     if (draft.length > 0) {
       setManualBooks(draft);
     } else if (savedManualBooks.length > 0) {
@@ -110,6 +122,7 @@ export default function SetupPage() {
     if (importedData) {
       const incoming = importedData as UserData;
       const current = existingData || loadUserData();
+      saveWereadData(incoming);
       const currentManualBooks = current?.books.filter(isManualBook) || [];
       const incomingTitleKeys = new Set(incoming.books.map(book => `${book.title.trim()}::${book.author.trim()}`));
       const preservedManualBooks = currentManualBooks.filter(book => !incomingTitleKeys.has(`${book.title.trim()}::${book.author.trim()}`));
@@ -180,9 +193,28 @@ export default function SetupPage() {
       lastSyncTime: new Date().toISOString(),
       source: current?.source === 'weread' ? 'weread' : 'manual',
     };
+    const manualIds = new Set(validBooks.map(book => book.id));
+    const currentManualData = loadManualData();
+    saveManualData({
+      ...data,
+      books: validBooks,
+      highlights: currentManualData?.highlights || data.highlights.filter(highlight => manualIds.has(highlight.bookId)),
+      readingEvents: currentManualData?.readingEvents || data.readingEvents.filter(event => manualIds.has(event.bookId)),
+      recommendations: currentManualData?.recommendations || [],
+      personas: currentManualData?.personas || [],
+      source: 'manual',
+    });
+    setHasManualData(true);
     saveUserData(data);
     clearManualBooksDraft();
     setExistingData(data);
+    router.push('/');
+  };
+
+  const handleDirectManualEntry = () => {
+    const manualData = loadManualData();
+    if (!manualData || manualData.books.length === 0) return;
+    saveUserData(manualData);
     router.push('/');
   };
 
@@ -199,11 +231,6 @@ export default function SetupPage() {
           <p className="text-ink-soft text-sm mt-2 opacity-70">
             一条时间轴，记录那些经过我、留下来、最后成为我的书。
           </p>
-          {existingData && (
-            <Link href="/" className="mt-5 inline-flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink-deep">
-              直接进入 ReadMind <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          )}
         </div>
 
         {step === 'choose' && (
@@ -270,12 +297,14 @@ export default function SetupPage() {
                 >
                   {existingData && manualBooks.some(book => book.title.trim()) ? '继续编辑我的书籍' : '添加我的书籍'}
                 </button>
-                <Link
-                  href="/"
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 border border-line-soft/70 px-4 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper-light hover:text-ink-deep"
-                >
-                  直接进入 <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                {hasManualData && (
+                  <button
+                    onClick={handleDirectManualEntry}
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 border border-line-soft/70 px-4 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper-light hover:text-ink-deep"
+                  >
+                    直接进入 <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -70,6 +70,58 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+function loadImage(source: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = source;
+  });
+}
+
+function drawRoundedRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.arcTo(x + width, y, x + width, y + height, radius);
+  context.arcTo(x + width, y + height, x, y + height, radius);
+  context.arcTo(x, y + height, x, y, radius);
+  context.arcTo(x, y, x + width, y, radius);
+  context.closePath();
+}
+
+function drawWrappedText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number,
+) {
+  const lines: string[] = [];
+  let currentLine = '';
+  for (const character of Array.from(text)) {
+    const candidate = currentLine + character;
+    if (currentLine && context.measureText(candidate).width > maxWidth) {
+      lines.push(currentLine);
+      currentLine = character;
+    } else {
+      currentLine = candidate;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+
+  const visibleLines = lines.slice(0, maxLines);
+  if (lines.length > maxLines) {
+    let lastLine = visibleLines[visibleLines.length - 1] || '';
+    while (lastLine && context.measureText(`${lastLine}…`).width > maxWidth) {
+      lastLine = lastLine.slice(0, -1);
+    }
+    visibleLines[visibleLines.length - 1] = `${lastLine}…`;
+  }
+  visibleLines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
+}
+
 export default function DailyQuoteCard({ highlight, book, onRefresh }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false);
@@ -86,50 +138,77 @@ export default function DailyQuoteCard({ highlight, book, onRefresh }: Props) {
     if (!highlight) return;
     setExporting(true);
     const selectedBackground = quoteBackgrounds.find(item => item.id === selectedBackgroundId) || quoteBackgrounds[0];
-    const quote = highlight.content.replace(/[<>&]/g, char => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[char] || char));
-    const bookLine = `《${book?.title || '未知书籍'}》 · ${book?.author || '未知作者'}`.replace(/[<>&]/g, char => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[char] || char));
     try {
-      const backgroundDataUrl = selectedBackground.src
-        ? await fetch(selectedBackground.src).then(response => {
+      if (document.fonts) await document.fonts.ready;
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 760;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('canvas-context-unavailable');
+
+      if (selectedBackground.src) {
+        const backgroundDataUrl = await fetch(selectedBackground.src).then(response => {
           if (!response.ok) throw new Error('background-load-failed');
           return response.blob();
-        }).then(blobToDataUrl)
-        : null;
-      const background = backgroundDataUrl
-        ? `<image href="${backgroundDataUrl}" x="0" y="0" width="1200" height="760" preserveAspectRatio="xMidYMid slice" opacity="0.46" />`
-        : `<rect width="1200" height="760" fill="${selectedBackground.color}" />`;
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
-          ${background}
-          <rect width="1200" height="760" fill="${selectedBackground.color}" opacity="0.2"/>
-          <rect x="90" y="84" width="1020" height="592" fill="#FAF9F1" fill-opacity="0.87" stroke="#B8CEC4"/>
-          <text x="132" y="150" fill="#64766F" font-family="Inter, sans-serif" font-size="24" letter-spacing="8">READMIND / 日话</text>
-          <foreignObject x="132" y="214" width="936" height="260">
-            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:'Noto Serif SC',serif;font-size:48px;line-height:1.55;color:#263B35;">“${quote}”</div>
-          </foreignObject>
-          <line x1="132" y1="534" x2="1068" y2="534" stroke="#B8CEC4"/>
-          <text x="132" y="594" fill="#64766F" font-family="Noto Sans SC, sans-serif" font-size="26">${bookLine}</text>
-          <text x="132" y="638" fill="#64766F" font-family="Inter, sans-serif" font-size="20">${highlight.createdAt.slice(0, 10)}</text>
-        </svg>
-      `;
-      const image = new Image();
-      image.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1200;
-        canvas.height = 760;
-        const context = canvas.getContext('2d');
-        if (!context) return;
-        context.drawImage(image, 0, 0);
-        const link = document.createElement('a');
-        link.download = `readmind-dayquote-${highlight.createdAt.slice(0, 10) || 'today'}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        setExporting(false);
-        setShowBackgroundPicker(false);
-      };
-      image.onerror = () => setExporting(false);
-      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        }).then(blobToDataUrl);
+        const backgroundImage = await loadImage(backgroundDataUrl);
+        context.globalAlpha = 0.46;
+        context.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+        context.globalAlpha = 1;
+      } else {
+        const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, '#DCEDE7');
+        gradient.addColorStop(0.56, '#F5F4E9');
+        gradient.addColorStop(1, '#BFDCD0');
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      context.globalAlpha = 0.2;
+      context.fillStyle = selectedBackground.color;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.globalAlpha = 1;
+
+      drawRoundedRect(context, 90, 84, 1020, 592, 4);
+      context.fillStyle = '#FAF9F1';
+      context.globalAlpha = 0.87;
+      context.fill();
+      context.globalAlpha = 1;
+      context.strokeStyle = '#B8CEC4';
+      context.lineWidth = 1;
+      context.stroke();
+
+      context.fillStyle = '#64766F';
+      context.font = '500 24px Inter, "Noto Sans SC", sans-serif';
+      context.fillText('READMIND / 日话', 132, 150);
+      context.fillStyle = '#263B35';
+      context.font = '48px "Noto Serif SC", "Source Han Serif SC", serif';
+      drawWrappedText(context, `“${highlight.content}”`, 132, 214, 920, 72, 3);
+      context.strokeStyle = '#B8CEC4';
+      context.beginPath();
+      context.moveTo(132, 534);
+      context.lineTo(1068, 534);
+      context.stroke();
+      context.fillStyle = '#64766F';
+      context.font = '26px "Noto Sans SC", "Source Han Sans SC", sans-serif';
+      context.fillText(`《${book?.title || '未知书籍'}》 · ${book?.author || '未知作者'}`, 132, 594);
+      context.font = '20px Inter, "Noto Sans SC", sans-serif';
+      context.fillText(highlight.createdAt.slice(0, 10) || 'today', 132, 638);
+
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('image-blob-unavailable');
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `readmind-dayquote-${highlight.createdAt.slice(0, 10) || 'today'}.png`;
+      link.href = objectUrl;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setShowBackgroundPicker(false);
     } catch {
+      // Keep the picker open so the user can try another background.
+    } finally {
       setExporting(false);
     }
   };
