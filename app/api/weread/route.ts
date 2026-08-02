@@ -209,7 +209,19 @@ function buildMonthlyPersonas(statsByMonth: Map<string, unknown>, highlights: Hi
     const totalSeconds = normalizeReadingSeconds(record.totalReadTime);
     const readDays = Number(record.readDays || 0);
     const topTopic = topCategories[0] || '阅读兴趣';
-    const name = totalSeconds > 90000 ? '深度沉浸者' : totalSeconds > 36000 ? '稳定阅读者' : monthHighlights.length > 8 ? '边读边想者' : '安静观察者';
+    const finishedCount = countFinishedFromStats(stats);
+    const categorySpan = topCategories.length;
+    const thoughtCount = monthHighlights.filter(highlight => highlight.thought).length;
+    const thoughtDensity = thoughtCount / Math.max(monthHighlights.length, 1);
+    const finishRate = finishedCount / Math.max(Number(record.bookCount || record.readBookCount || preferCategory.length || 1), 1);
+    const name = chooseSyncedMonthlyPersonaName({
+      totalSeconds,
+      readDays,
+      categorySpan,
+      highlightCount: monthHighlights.length,
+      thoughtDensity,
+      finishRate,
+    });
     const longestTitle = String(longestBook?.title || '未命名作品');
     const categoryText = topCategories.join('、') || '多元主题';
 
@@ -224,12 +236,32 @@ function buildMonthlyPersonas(statsByMonth: Map<string, unknown>, highlights: Hi
       topTopic,
       peakMonth: `${month}月`,
       totalSeconds,
-      finishedCount: countFinishedFromStats(stats),
+      finishedCount,
       highlightCount: monthHighlights.length,
       representativeHighlight,
       suggestion: `下个月可以继续保留「${topTopic}」这条线，但建议把它变成一个更具体的问题：我到底想理解什么？先选一本主书深入，再找一本不同类别的书形成对照，月底用 3 条划线和 1 段自己的话收束。这样推荐和知识地图会更容易长出真正属于你的连接。`,
     };
   }).filter(persona => persona.totalSeconds > 0 || persona.longestBook);
+}
+
+function chooseSyncedMonthlyPersonaName(metrics: {
+  totalSeconds: number;
+  readDays: number;
+  categorySpan: number;
+  highlightCount: number;
+  thoughtDensity: number;
+  finishRate: number;
+}): string {
+  if (metrics.totalSeconds > 144000 && metrics.readDays >= 18) return '主题深井潜行者';
+  if (metrics.totalSeconds > 90000 && metrics.finishRate >= 0.5) return '深度沉浸者';
+  if (metrics.highlightCount >= 10 && metrics.thoughtDensity >= 0.35) return '边读边想者';
+  if (metrics.categorySpan >= 4) return '多线编织者';
+  if (metrics.categorySpan >= 3) return '多线漫游者';
+  if (metrics.highlightCount >= 12) return '金句拾荒者';
+  if (metrics.totalSeconds > 72000 && metrics.finishRate < 0.35) return '材料采集者';
+  if (metrics.readDays >= 20) return '稳定阅读者';
+  if (metrics.totalSeconds > 36000) return '慢读守灯人';
+  return '安静观察者';
 }
 
 function formatSecondsForText(seconds: number): string {
