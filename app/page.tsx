@@ -30,6 +30,18 @@ export default function HomePage() {
   const [quoteBook, setQuoteBook] = useState<Book | null>(null);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [recentOpenedMap, setRecentOpenedMap] = useState<Record<string, string>>({});
+  const [todayLabel, setTodayLabel] = useState('');
+
+  useEffect(() => {
+    const updateTodayLabel = () => {
+      const now = new Date();
+      setTodayLabel(`${now.getFullYear()} · ${String(now.getMonth() + 1).padStart(2, '0')} · ${String(now.getDate()).padStart(2, '0')}`);
+    };
+
+    updateTodayLabel();
+    const interval = window.setInterval(updateTodayLabel, 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const refreshData = useCallback(() => {
     const stored = loadUserData();
@@ -122,7 +134,7 @@ export default function HomePage() {
           <div>
             <div className="flex items-center gap-3">
               <span className="ink-label">READMIND / TODAY</span>
-              <span className="text-xs text-ink-soft">2026 · 08 · 01</span>
+              <span className="text-xs text-ink-soft">{todayLabel}</span>
             </div>
             <h1 className="mt-4 max-w-2xl text-4xl leading-tight text-ink-deep sm:text-5xl" style={{ fontFamily: 'var(--font-display)' }}>
               今天，哪一句话正在发芽？

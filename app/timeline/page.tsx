@@ -21,7 +21,7 @@ import { generateRecommendations, selectRecommendationForBook } from '@/lib/ai';
 import { getCategoryInsights, getReadingStats, parseLocalDate } from '@/lib/insights';
 
 const ALL_CATEGORIES: Category[] = ['文学', '心理', '历史', '社科', '经济理财', '小说', '计算机'];
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 15;
 type DurationFilter = 'all' | '1h' | '5h' | '10h';
 type TimelineScale = 'year' | 'quarter' | 'month';
 const DEMO_TODAY = new Date(2026, 7, 1);
@@ -481,7 +481,7 @@ function TimelineContent() {
           {filteredBooks.length > PAGE_SIZE && (
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-line-soft/25 pb-4">
               <p className="text-xs text-ink-soft">
-                每页 10 本 · 当前显示第 {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, filteredBooks.length)} 本，共 {filteredBooks.length} 本
+                每页 15 本 · 当前显示第 {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, filteredBooks.length)} 本，共 {filteredBooks.length} 本
               </p>
               <div className="inline-flex items-center gap-1 border border-line-soft/45 bg-paper-warm p-1">
                 <button

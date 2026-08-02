@@ -10,6 +10,7 @@ const stickers = [
   { className: 'sticker-piece sticker-tape-c', label: '浅色纸胶带装饰' },
   { className: 'sticker-piece sticker-botanical-d', label: '边缘花朵贴纸装饰' },
   { className: 'sticker-piece sticker-botanical-e', label: '边缘叶片贴纸装饰' },
+  { className: 'sticker-piece sticker-botanical-f', label: '边缘小花贴纸装饰' },
   { className: 'sticker-piece sticker-tape-d', label: '边缘纸胶带装饰' },
 ];
 

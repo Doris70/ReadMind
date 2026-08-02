@@ -3,8 +3,8 @@
 @theme inline {
   /* 基础颜色 */
   --color-paper-mist: #DDEFE7;
-  --color-paper-warm: #F3F3E6;
-  --color-paper-light: #FBFAF1;
+  --color-paper-warm: #EAF2E8;
+  --color-paper-light: #F7FAF2;
   --color-ink-deep: #263B35;
   --color-ink-soft: #64766F;
   --color-line-soft: #B8CEC4;
@@ -42,24 +42,25 @@ body {
 
 /* 纸张水彩背景 */
 body {
-  background-color: #DCEFE7;
+  background-color: #D4ECE3;
   color: var(--color-ink-deep);
   font-family: var(--font-body);
   background-image:
-    radial-gradient(ellipse at 18% 8%, rgba(98, 176, 180, 0.26) 0%, rgba(98, 176, 180, 0.12) 28%, transparent 56%),
-    radial-gradient(ellipse at 74% 18%, rgba(171, 205, 128, 0.24) 0%, rgba(171, 205, 128, 0.12) 32%, transparent 62%),
-    radial-gradient(ellipse at 52% 48%, rgba(244, 243, 220, 0.78) 0%, rgba(244, 243, 220, 0.34) 34%, transparent 68%),
-    radial-gradient(ellipse at 22% 74%, rgba(124, 197, 201, 0.18) 0%, transparent 54%),
-    radial-gradient(ellipse at 86% 82%, rgba(137, 189, 151, 0.18) 0%, transparent 48%),
+    radial-gradient(ellipse at 18% 8%, rgba(77, 165, 171, 0.34) 0%, rgba(77, 165, 171, 0.15) 28%, transparent 56%),
+    radial-gradient(ellipse at 74% 18%, rgba(153, 201, 137, 0.28) 0%, rgba(153, 201, 137, 0.14) 32%, transparent 62%),
+    radial-gradient(ellipse at 52% 48%, rgba(215, 236, 214, 0.54) 0%, rgba(215, 236, 214, 0.22) 34%, transparent 68%),
+    radial-gradient(ellipse at 22% 74%, rgba(101, 190, 195, 0.24) 0%, transparent 54%),
+    radial-gradient(ellipse at 86% 82%, rgba(112, 181, 143, 0.26) 0%, transparent 48%),
+    radial-gradient(ellipse at 52% 96%, rgba(123, 172, 190, 0.16) 0%, transparent 46%),
     linear-gradient(90deg, rgba(38, 59, 53, 0.025) 1px, transparent 1px),
     linear-gradient(0deg, rgba(38, 59, 53, 0.018) 1px, transparent 1px);
-  background-size: auto, auto, auto, auto, auto, 46px 46px, 46px 46px;
+  background-size: auto, auto, auto, auto, auto, auto, 46px 46px, 46px 46px;
 }
 
 body::before {
   background:
-    linear-gradient(180deg, rgba(250, 249, 241, 0.48), rgba(250, 249, 241, 0.12) 42%, rgba(220, 239, 231, 0.2)),
-    radial-gradient(ellipse at 50% 38%, rgba(251, 250, 241, 0.48), transparent 46%);
+    linear-gradient(180deg, rgba(242, 250, 244, 0.3), rgba(242, 250, 244, 0.07) 42%, rgba(220, 239, 231, 0.18)),
+    radial-gradient(ellipse at 50% 38%, rgba(224, 242, 225, 0.32), transparent 46%);
   content: "";
   inset: 0;
   pointer-events: none;
@@ -180,6 +181,19 @@ main {
   width: 132px;
 }
 
+.sticker-botanical-f {
+  background-image: url("/sticker/4.png");
+  background-position: -270px -18px;
+  background-size: 420px auto;
+  filter: saturate(0.68) contrast(0.9);
+  height: 142px;
+  opacity: 0.18;
+  right: clamp(-38px, 0.8vw, 28px);
+  top: 43vh;
+  transform: rotate(10deg);
+  width: 150px;
+}
+
 .sticker-tape-a,
 .sticker-tape-b,
 .sticker-tape-c {
@@ -226,11 +240,11 @@ main {
 }
 
 .paper-wash {
-  background-color: rgba(243, 243, 230, 0.78);
+  background-color: rgba(232, 243, 234, 0.78);
   background-image:
     radial-gradient(ellipse at 18% 18%, rgba(119, 197, 200, 0.2) 0%, transparent 36%),
-    radial-gradient(ellipse at 84% 72%, rgba(169, 205, 130, 0.18) 0%, transparent 40%),
-    linear-gradient(180deg, rgba(251, 250, 241, 0.42), rgba(251, 250, 241, 0.1));
+    radial-gradient(ellipse at 84% 72%, rgba(151, 202, 139, 0.2) 0%, transparent 40%),
+    linear-gradient(180deg, rgba(247, 250, 242, 0.36), rgba(247, 250, 242, 0.08));
   backdrop-filter: blur(1px);
 }
 
@@ -351,10 +365,11 @@ main {
 .reveal-on-scroll {
   opacity: 0;
   transform: translateY(22px);
+  will-change: opacity, transform, filter;
 }
 
 .reveal-on-scroll.is-revealed {
-  animation: revealFloatIn 720ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms) both;
+  animation: revealFloatIn 980ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms) both;
 }
 
 .knowledge-node-halo {
