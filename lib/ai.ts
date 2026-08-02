@@ -116,7 +116,9 @@ export function generateRecommendations(data: UserData): Recommendation[] {
 }
 
 export function selectRecommendationForBook(book: Book, data: UserData): Recommendation | null {
-  const recommendations = generateRecommendations(data);
+  const allRecommendations = generateRecommendations(data);
+  const sameCategoryRecommendations = allRecommendations.filter(recommendation => recommendation.category === book.category);
+  const recommendations = sameCategoryRecommendations.length > 0 ? sameCategoryRecommendations : allRecommendations;
   if (recommendations.length === 0) return null;
 
   const bookHighlights = data.highlights.filter(highlight => highlight.bookId === book.id);
@@ -129,7 +131,6 @@ export function selectRecommendationForBook(book: Book, data: UserData): Recomme
       .flatMap(highlight => highlight.topicTags),
   );
   const existingBookKeys = new Set(data.books.map(item => normalizeText(`${item.title}${item.author}`)));
-  const adjacentCategories = categoryAdjacency[book.category] || [];
   const deepReadScore = Math.min(book.readingSeconds / 7200, 4) + Math.min(book.highlightCount / 6, 3) + Math.min(book.thoughtCount, 3);
   const bookRecencyScore = book.lastReadDate ? Math.max(0, 2 - Math.min(daysSince(book.lastReadDate), 60) / 30) : 0;
   const scored = recommendations.map((recommendation, index) => {
@@ -142,7 +143,7 @@ export function selectRecommendationForBook(book: Book, data: UserData): Recomme
     const topicOverlapScore = [...recommendationTopics].reduce((score, topic) => (
       score + [...bookTopics].filter(bookTopic => relatedText(bookTopic, topic)).length * 3
     ), 0);
-    const categoryScore = recommendation.category === book.category ? 4 : adjacentCategories.includes(recommendation.category) ? 2.2 : 0;
+    const categoryScore = recommendation.category === book.category ? 8 : 0;
     const recentTopicScore = [...recommendationTopics].some(topic => [...recentTags].some(tag => relatedText(topic, tag))) ? 2.5 : 0;
     const stageScore = book.status === 'finished'
       ? 1.8
@@ -174,16 +175,6 @@ export function selectRecommendationForBook(book: Book, data: UserData): Recomme
   const hash = [...book.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return recommendations[hash % recommendations.length];
 }
-
-const categoryAdjacency: Record<Category, Category[]> = {
-  文学: ['小说', '心理', '历史'],
-  小说: ['文学', '心理', '社科'],
-  心理: ['社科', '文学', '经济理财'],
-  社科: ['历史', '心理', '经济理财'],
-  历史: ['社科', '文学', '经济理财'],
-  经济理财: ['社科', '心理', '计算机'],
-  计算机: ['社科', '经济理财', '心理'],
-};
 
 function normalizeText(value: string): string {
   return value.toLowerCase().replace(/[《》“”"'：:，,。！？!?\s]/g, '');

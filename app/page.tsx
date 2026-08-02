@@ -12,8 +12,8 @@ import HighlightQuote from '@/components/insights/HighlightQuote';
 import BookCover from '@/components/ui/BookCover';
 import { Book, Highlight, CATEGORY_COLORS, formatReadingTime, UserData } from '@/lib/adapters/types';
 import { loadRecentOpenedBooks, loadUserData, recordBookOpened, updateStoredBook } from '@/lib/store';
-import { generateRecommendations, selectDailyQuote, selectRecommendationForBook } from '@/lib/ai';
-import { getCategoryInsights, getReadingGaps, getReadingStats, getTopHighlights, getTopics } from '@/lib/insights';
+import { selectDailyQuote, selectRecommendationForBook } from '@/lib/ai';
+import { getCategoryInsights, getReadingStats, getTopHighlights } from '@/lib/insights';
 
 function getHomeMonthStats(data: UserData) {
   if (data.source === 'demo') {
@@ -95,12 +95,8 @@ export default function HomePage() {
   const monthStats = getHomeMonthStats(data);
   const allStats = getReadingStats(data.books.filter(book => book.status !== 'unstarted'));
   const categoryInsights = getCategoryInsights(data.books.filter(book => book.status !== 'unstarted')).slice(0, 3);
-  const topics = getTopics(data, 5);
-  const gaps = getReadingGaps(data);
   const topHighlights = getTopHighlights(data.highlights, 3);
-  const recommendations = generateRecommendations(data);
-  const nextRecommendation = recommendations[0] || null;
-  const selectedBookRecommendation = selectedBook ? selectRecommendationForBook(selectedBook, data) : nextRecommendation;
+  const selectedBookRecommendation = selectedBook ? selectRecommendationForBook(selectedBook, data) : null;
   const primaryBook = readingBooks[0] || recentBooks[0] || null;
 
   const refreshQuote = () => {
@@ -286,53 +282,6 @@ export default function HomePage() {
                 </div>
               );
             })}
-          </div>
-        </section>
-
-        <section className="mt-14 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.65fr)]">
-          <div className="section-rule pt-8">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <span className="ink-label">NEXT BOOK</span>
-                <h2 className="mt-2 text-2xl text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>下一本，为什么是它</h2>
-              </div>
-              <Link href="/discover" className="inline-flex items-center gap-1 text-sm text-ink-soft hover:text-ink-deep">
-                看更多 <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-            {nextRecommendation ? (
-              <div className="mt-6 grid gap-5 sm:grid-cols-[72px_1fr]">
-                <div className="flex h-28 w-20 items-end rounded-[4px] border border-line-soft/35 bg-paper-light p-2" style={{ backgroundColor: `${CATEGORY_COLORS[nextRecommendation.category]}36` }}>
-                  <span className="text-sm leading-snug text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>{nextRecommendation.title}</span>
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-xl text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>{nextRecommendation.title}</h3>
-                    <span className="text-xs text-ink-soft">{nextRecommendation.author}</span>
-                  </div>
-                  <p className="mt-3 text-sm leading-7 text-ink-soft">{nextRecommendation.reason}</p>
-                  {nextRecommendation.quote && <p className="mt-4 border-l-2 border-sun-yellow pl-3 text-sm italic text-ink-deep">“{nextRecommendation.quote}”</p>}
-                </div>
-              </div>
-            ) : (
-              <p className="mt-6 text-sm text-ink-soft">阅读轨迹还在生长，积累几条划线后会出现更有依据的推荐。</p>
-            )}
-          </div>
-
-          <div className="section-rule pt-8">
-            <span className="ink-label">YOUR READING WEATHER</span>
-            <h2 className="mt-2 text-2xl text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>这段时间的阅读气候</h2>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {topics.map(topic => <span key={topic} className="text-sm text-ink-soft">#{topic}</span>)}
-            </div>
-            <div className="mt-7 space-y-4">
-              {gaps.map(gap => (
-                <div key={gap.label} className="border-l-2 pl-4" style={{ borderColor: gap.color }}>
-                  <p className="text-sm text-ink-deep">{gap.label}</p>
-                  <p className="mt-1 text-xs leading-6 text-ink-soft">{gap.detail}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
