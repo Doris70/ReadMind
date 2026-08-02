@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, Compass, Network, Sprout, User } from 'lucide-react';
+import { BookOpen, Compass, Network, Settings2, Sprout, User } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: '首页', icon: Sprout },
@@ -40,6 +40,18 @@ export default function NavBar() {
               </Link>
             );
           })}
+          <Link
+            href="/setup"
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+              pathname === '/setup'
+                ? 'bg-sprout-green/10 font-medium text-sprout-green'
+                : 'text-ink-soft hover:bg-paper-warm hover:text-ink-deep'
+            }`}
+            title="数据设置"
+          >
+            <Settings2 className="h-4 w-4" />
+            <span className="hidden sm:inline">数据设置</span>
+          </Link>
         </div>
       </div>
     </nav>

@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useRouter } from 'next/navigation';
-import { BookOpen, CircleHelp, Key, PenLine, Sparkles, Loader2, Plus, Trash2, X } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { ArrowRight, BookOpen, CircleHelp, Key, PenLine, Sparkles, Loader2, Plus, Trash2, X } from 'lucide-react';
 import Image from 'next/image';
 import { loadDemoData } from '@/lib/adapters/demo';
-import { saveUserData } from '@/lib/store';
+import { clearManualBooksDraft, isManualBook, loadManualBooksDraft, loadUserData, saveManualBooksDraft, saveUserData } from '@/lib/store';
 import { Book, BookStatus, Category, UserData } from '@/lib/adapters/types';
 
 const categories: Category[] = ['文学', '心理', '历史', '社科', '经济理财', '小说', '计算机'];
@@ -48,6 +51,8 @@ function daysBetween(start: string | null, end: string | null): number {
 export default function SetupPage() {
   const router = useRouter();
   const [step, setStep] = useState<'choose' | 'connecting' | 'preview' | 'manual'>('choose');
+  const [existingData, setExistingData] = useState<UserData | null>(null);
+  const [setupHydrated, setSetupHydrated] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
   const [previewData, setPreviewData] = useState<{ bookCount: number; highlightCount: number } | null>(null);
@@ -55,9 +60,28 @@ export default function SetupPage() {
   const [manualBooks, setManualBooks] = useState<Book[]>([createManualBook(0)]);
   const [showApiGuide, setShowApiGuide] = useState(false);
 
+  useEffect(() => {
+    const stored = loadUserData();
+    const draft = loadManualBooksDraft();
+    const savedManualBooks = stored?.books.filter(isManualBook) || [];
+    setExistingData(stored);
+    if (draft.length > 0) {
+      setManualBooks(draft);
+    } else if (savedManualBooks.length > 0) {
+      setManualBooks(savedManualBooks);
+    }
+    setSetupHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!setupHydrated || step !== 'manual') return;
+    saveManualBooksDraft(manualBooks);
+  }, [manualBooks, setupHydrated, step]);
+
   const handleDemo = () => {
     const data = loadDemoData();
     saveUserData(data);
+    clearManualBooksDraft();
     router.push('/');
   };
 
@@ -84,7 +108,21 @@ export default function SetupPage() {
 
   const handleConfirmImport = () => {
     if (importedData) {
-      saveUserData(importedData as Parameters<typeof saveUserData>[0]);
+      const incoming = importedData as UserData;
+      const current = existingData || loadUserData();
+      const currentManualBooks = current?.books.filter(isManualBook) || [];
+      const incomingTitleKeys = new Set(incoming.books.map(book => `${book.title.trim()}::${book.author.trim()}`));
+      const preservedManualBooks = currentManualBooks.filter(book => !incomingTitleKeys.has(`${book.title.trim()}::${book.author.trim()}`));
+      const preservedManualIds = new Set(preservedManualBooks.map(book => book.id));
+      const next: UserData = {
+        ...incoming,
+        books: [...incoming.books, ...preservedManualBooks],
+        highlights: [...incoming.highlights, ...(current?.highlights.filter(highlight => preservedManualIds.has(highlight.bookId)) || [])],
+        readingEvents: [...incoming.readingEvents, ...(current?.readingEvents.filter(event => preservedManualIds.has(event.bookId)) || [])],
+      };
+      saveUserData(next);
+      clearManualBooksDraft();
+      setExistingData(next);
       router.push('/');
     }
   };
@@ -130,17 +168,21 @@ export default function SetupPage() {
       return;
     }
 
+    const current = existingData || loadUserData();
+    const preservedBooks = current?.books.filter(book => !isManualBook(book)) || [];
     const data: UserData = {
-      userId: 'manual-user',
-      books: validBooks,
-      highlights: [],
-      readingEvents: [],
-      recommendations: [],
-      personas: [],
+      userId: current?.userId || 'manual-user',
+      books: [...preservedBooks, ...validBooks],
+      highlights: current?.highlights || [],
+      readingEvents: current?.readingEvents || [],
+      recommendations: current?.recommendations || [],
+      personas: current?.personas || [],
       lastSyncTime: new Date().toISOString(),
-      source: 'manual',
+      source: current?.source === 'weread' ? 'weread' : 'manual',
     };
     saveUserData(data);
+    clearManualBooksDraft();
+    setExistingData(data);
     router.push('/');
   };
 
@@ -157,6 +199,11 @@ export default function SetupPage() {
           <p className="text-ink-soft text-sm mt-2 opacity-70">
             一条时间轴，记录那些经过我、留下来、最后成为我的书。
           </p>
+          {existingData && (
+            <Link href="/" className="mt-5 inline-flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink-deep">
+              直接进入 ReadMind <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
         </div>
 
         {step === 'choose' && (
@@ -216,12 +263,20 @@ export default function SetupPage() {
                 <h2 className="text-lg font-medium text-ink-deep">手动创建 / 自主导入</h2>
               </div>
               <p className="text-sm text-ink-soft mb-4">手动添加书籍，并自行修改开始日期、结束日期、进度和阅读时长。</p>
-              <button
-                onClick={() => setStep('manual')}
-                className="w-full px-4 py-2.5 bg-paper-light border border-line-soft text-ink-deep rounded-md text-sm font-medium hover:bg-paper-mist transition-colors"
-              >
-                添加我的书籍
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  onClick={() => setStep('manual')}
+                  className="flex-1 px-4 py-2.5 bg-paper-light border border-line-soft text-ink-deep rounded-md text-sm font-medium hover:bg-paper-mist transition-colors"
+                >
+                  {existingData && manualBooks.some(book => book.title.trim()) ? '继续编辑我的书籍' : '添加我的书籍'}
+                </button>
+                <Link
+                  href="/"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 border border-line-soft/70 px-4 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper-light hover:text-ink-deep"
+                >
+                  直接进入 <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
         )}

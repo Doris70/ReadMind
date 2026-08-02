@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#DDE8EA"/>
+      <stop offset="0.55" stop-color="#C4D5DF"/>
+      <stop offset="1" stop-color="#AEBECB"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFF9DB" stop-opacity="0.92"/>
+      <stop offset="0.7" stop-color="#F2E6B5" stop-opacity="0.52"/>
+      <stop offset="1" stop-color="#F2E6B5" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <pattern id="lines" width="52" height="52" patternUnits="userSpaceOnUse">
+      <path d="M0 50H52" stroke="#35536A" stroke-opacity="0.1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="760" fill="url(#bg)"/>
+  <rect width="1200" height="760" fill="url(#lines)"/>
+  <ellipse cx="176" cy="180" rx="260" ry="170" fill="#567D99" opacity="0.3" filter="url(#blur)"/>
+  <ellipse cx="1010" cy="630" rx="300" ry="180" fill="#6C8A96" opacity="0.24" filter="url(#blur)"/>
+  <circle cx="966" cy="144" r="108" fill="url(#moon)"/>
+  <circle cx="966" cy="144" r="48" fill="#F4EAC2" opacity="0.76"/>
+  <path d="M78 618C232 550 294 588 410 502C500 436 545 382 622 270" fill="none" stroke="#29495B" stroke-opacity="0.32" stroke-width="5"/>
+  <path d="M162 573C197 530 221 494 226 448M244 555C219 515 210 474 214 429M322 520C351 477 366 437 360 396M410 460C438 422 472 392 513 365" fill="none" stroke="#29495B" stroke-opacity="0.26" stroke-width="3"/>
+  <path d="M780 590c100-46 170-58 290-26" fill="none" stroke="#F3E9C6" stroke-opacity="0.55" stroke-width="2"/>
+  <circle cx="152" cy="118" r="3" fill="#F4EAC2" opacity="0.8"/>
+  <circle cx="235" cy="84" r="2" fill="#F4EAC2" opacity="0.65"/>
+  <circle cx="758" cy="94" r="3" fill="#F4EAC2" opacity="0.75"/>
+</svg>

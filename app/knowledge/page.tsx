@@ -4,7 +4,7 @@
 
 import { PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Brain, CalendarDays, Cpu, Feather, Landmark, Maximize2, Minus, Move, Plus, Quote, Scale, Search, Sparkles, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, Maximize2, Minus, Move, Plus, Quote, Search, Sparkles } from 'lucide-react';
 import NavBar from '@/components/ui/NavBar';
 import { Book, Category, Highlight, UserData, CATEGORY_COLORS } from '@/lib/adapters/types';
 import { loadUserData } from '@/lib/store';
@@ -21,16 +21,6 @@ const nodeLabels = {
   book: '书籍',
   theme: '主题',
   idea: '观点',
-};
-
-const categoryLogos: Record<Category, { label: string; icon: typeof BookOpen }> = {
-  文学: { label: '文学', icon: Feather },
-  心理: { label: '心理', icon: Brain },
-  历史: { label: '历史', icon: Landmark },
-  社科: { label: '社科', icon: Users },
-  经济理财: { label: '经济理财', icon: Scale },
-  小说: { label: '小说', icon: Sparkles },
-  计算机: { label: '计算机', icon: Cpu },
 };
 
 function nodeSize(node: KnowledgeNode) {
@@ -252,13 +242,10 @@ export default function KnowledgePage() {
           <div className="flex flex-wrap gap-3 text-[11px] text-ink-soft">
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-water-blue" /> 主题</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-sun-yellow" /> 观点</span>
-            {(Object.keys(categoryLogos) as Category[]).map(category => {
-              const Icon = categoryLogos[category].icon;
+            {(Object.keys(CATEGORY_COLORS) as Category[]).map(category => {
               return (
                 <span key={category} className="inline-flex items-center gap-1.5">
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/70" style={{ backgroundColor: CATEGORY_COLORS[category] }}>
-                    <Icon className="h-3 w-3 text-ink-deep/80" />
-                  </span>
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[category] }} />
                   {category}
                 </span>
               );
@@ -346,7 +333,6 @@ export default function KnowledgePage() {
                 const isVisible = visibleNodeIds.has(node.id);
                 const isSelected = selectedNode?.id === node.id;
                 const size = nodeSize(node);
-                const CategoryIcon = node.type === 'book' && node.category ? categoryLogos[node.category].icon : null;
                 return (
                   <g
                     key={node.id}
@@ -374,21 +360,6 @@ export default function KnowledgePage() {
                     />
                     {isSelected && <circle cx={node.x} cy={node.y} r={size + 1.15} fill="none" stroke="#FAF9F1" strokeOpacity="0.85" strokeWidth="0.32" />}
                     {node.type === 'theme' && <circle cx={node.x} cy={node.y} r={size - 1.6} fill="none" stroke="#FAF9F1" strokeOpacity="0.42" strokeWidth="0.35" />}
-                    {CategoryIcon && (
-                      <>
-                        <circle cx={node.x} cy={node.y} r={Math.max(size * 0.52, 2.45)} fill="#FAF9F1" fillOpacity="0.74" />
-                        <CategoryIcon
-                          x={node.x - Math.max(size * 0.36, 1.75)}
-                          y={node.y - Math.max(size * 0.36, 1.75)}
-                          width={Math.max(size * 0.72, 3.5)}
-                          height={Math.max(size * 0.72, 3.5)}
-                          color="#263B35"
-                          opacity={0.82}
-                          strokeWidth={2.1}
-                          pointerEvents="none"
-                        />
-                      </>
-                    )}
                     <rect
                       x={node.x - Math.min(Math.max(node.label.length * 1.2, 9), 23) / 2}
                       y={node.y + size + 1.2}
@@ -425,10 +396,7 @@ export default function KnowledgePage() {
                     <h2 className="mt-2 text-2xl leading-tight text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>{selectedNode.label}</h2>
                     {selectedNode.type === 'book' && selectedNode.category && (
                       <span className="mt-3 inline-flex items-center gap-1.5 border border-line-soft/40 bg-paper-light px-2.5 py-1 text-xs text-ink-soft">
-                        {(() => {
-                          const Icon = categoryLogos[selectedNode.category].icon;
-                          return <Icon className="h-3.5 w-3.5" style={{ color: CATEGORY_COLORS[selectedNode.category] }} />;
-                        })()}
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[selectedNode.category] }} />
                         {selectedNode.category}
                       </span>
                     )}

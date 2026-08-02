@@ -104,6 +104,19 @@ main {
   transform-origin: center;
 }
 
+.sticker-paper-page,
+.sticker-botanical-a,
+.sticker-botanical-b,
+.sticker-botanical-c,
+.sticker-botanical-d,
+.sticker-botanical-e,
+.sticker-botanical-f {
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 42%, rgba(0, 0, 0, 0.86) 68%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, #000 42%, rgba(0, 0, 0, 0.86) 68%, transparent 100%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
 .sticker-paper-page {
   background-image: url("/sticker/5.png");
   background-position: -62px -68px;

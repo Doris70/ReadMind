@@ -4,6 +4,7 @@ const STORAGE_KEY = 'readmind_data';
 const USER_ID_KEY = 'readmind_user_id';
 const RECENT_OPENED_KEY = 'readmind_recent_opened_books';
 const RECOMMENDATION_FEEDBACK_KEY = 'readmind_recommendation_feedback';
+const MANUAL_DRAFT_KEY = 'readmind_manual_books_draft';
 
 export type RecentOpenedBook = {
   bookId: string;
@@ -54,6 +55,33 @@ export function clearUserData(): void {
   localStorage.removeItem(USER_ID_KEY);
   localStorage.removeItem(RECENT_OPENED_KEY);
   localStorage.removeItem(RECOMMENDATION_FEEDBACK_KEY);
+  localStorage.removeItem(MANUAL_DRAFT_KEY);
+}
+
+export function isManualBook(book: Book): boolean {
+  return book.dateSource === 'manual' || book.id.startsWith('manual_') || book.id.startsWith('manual_axis_');
+}
+
+export function loadManualBooksDraft(): Book[] {
+  if (typeof window === 'undefined') return [];
+  const raw = localStorage.getItem(MANUAL_DRAFT_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as Book[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveManualBooksDraft(books: Book[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(MANUAL_DRAFT_KEY, JSON.stringify(books));
+}
+
+export function clearManualBooksDraft(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(MANUAL_DRAFT_KEY);
 }
 
 export function updateStoredBook(book: Book): UserData | null {
