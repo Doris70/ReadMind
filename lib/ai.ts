@@ -170,10 +170,44 @@ export function selectRecommendationForBook(book: Book, data: UserData): Recomme
   });
 
   scored.sort((a, b) => b.score - a.score);
-  if (scored[0].score > scored[scored.length - 1].score) return scored[0].recommendation;
+  if (scored[0].score > scored[scored.length - 1].score) {
+    return bindRecommendationToSelectedBook(scored[0].recommendation, book, bookHighlights);
+  }
 
   const hash = [...book.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return recommendations[hash % recommendations.length];
+  return bindRecommendationToSelectedBook(recommendations[hash % recommendations.length], book, bookHighlights);
+}
+
+function bindRecommendationToSelectedBook(recommendation: Recommendation, book: Book, highlights: Highlight[]): Recommendation {
+  const highlightTopics = highlights.flatMap(highlight => highlight.topicTags);
+  const topics = [...new Set([...highlightTopics, book.category])].filter(Boolean);
+  const recommendationTopics = recommendation.evidence
+    .filter(evidence => evidence.type === 'topic')
+    .map(evidence => evidence.value);
+  const matchedTopic = recommendationTopics.find(topic => topics.some(bookTopic => relatedText(bookTopic, topic)))
+    || topics[0]
+    || book.category;
+  const evidenceTopic = matchedTopic || book.category;
+  const hasHighlights = highlights.length > 0;
+  const thoughtCount = highlights.filter(highlight => highlight.thought).length;
+  const traceHint = hasHighlights
+    ? `你在《${book.title}》里留下的划线集中在「${evidenceTopic}」附近${thoughtCount > 0 ? `，其中还有 ${thoughtCount} 条自己的想法` : ''}`
+    : `《${book.title}》目前划线不多，但它已经落在「${book.category}」这条阅读路径里`;
+  const categoryHint = recommendation.category === book.category
+    ? `它和《${book.title}》同属「${book.category}」，适合顺着这本书继续往前读`
+    : `它会把《${book.title}》里的问题意识带到「${recommendation.category}」里重新照看`;
+  const bridgeHint = recommendationTopics.length > 0
+    ? `衔接点是「${recommendationTopics[0]}」`
+    : `衔接点不是全局最近书目，而是这本书本身留下的问题`;
+
+  return {
+    ...recommendation,
+    reason: `${traceHint}。推荐《${recommendation.title}》是因为${categoryHint}，${bridgeHint}；这样下一本书接上的不是书名顺序，而是你刚刚点开的这本书所暴露出的兴趣线索。`,
+    evidence: [
+      { type: 'topic', value: evidenceTopic },
+      { type: 'book', value: book.title },
+    ],
+  };
 }
 
 function normalizeText(value: string): string {
