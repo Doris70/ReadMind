@@ -10,7 +10,7 @@ import BookCover from '@/components/ui/BookCover';
 import { UserData, formatReadingTime } from '@/lib/adapters/types';
 import { loadUserData } from '@/lib/store';
 import { calculateMonthlyPersona } from '@/lib/ai';
-import { getCategoryInsights, getMonthBooks, getMonthLabel, getMonthlyPersonaEvidence, getReadingStats, getTopHighlights, parseLocalDate } from '@/lib/insights';
+import { getBookMonthReadingSeconds, getCategoryInsights, getMonthBooks, getMonthLabel, getMonthlyPersonaEvidence, getReadingStats, getTopHighlights, parseLocalDate } from '@/lib/insights';
 
 const DEFAULT_YEAR = 2026;
 const DEFAULT_MONTH = 8;
@@ -22,7 +22,8 @@ function monthKey(year: number, month: number) {
 function getMonthHighlights(data: UserData, year: number, month: number) {
   return data.highlights.filter(highlight => {
     const date = parseLocalDate(highlight.createdAt);
-    return Boolean(date && date.getFullYear() === year && date.getMonth() === month - 1);
+    return highlight.source === 'weread_personal'
+      && Boolean(date && date.getFullYear() === year && date.getMonth() === month - 1);
   });
 }
 
@@ -75,9 +76,12 @@ export default function PersonaPage() {
   const monthHighlights = getMonthHighlights(data, year, month);
   const representativeHighlight = monthHighlights.find(highlight => highlight.content === persona?.representativeHighlight)
     || getTopHighlights(monthHighlights, 1)[0];
-  const longestBySeconds = [...monthBooks].sort((a, b) => b.readingSeconds - a.readingSeconds)[0] || monthBooks[0];
+  const longestByMonthSeconds = [...monthBooks].sort((a, b) => getBookMonthReadingSeconds(b, year, month) - getBookMonthReadingSeconds(a, year, month))[0] || monthBooks[0];
   const personaBook = monthBooks.find(book => book.title === persona?.longestBook);
-  const representativeBook = data.source === 'weread' && personaBook ? personaBook : longestBySeconds;
+  const representativeBook = data.source === 'weread' && personaBook ? personaBook : longestByMonthSeconds;
+  const representativeBookMonthlySeconds = persona?.monthlyReadingSeconds
+    || (representativeBook ? getBookMonthReadingSeconds(representativeBook, year, month) : 0);
+  const hasSyncedMonthlyReadingSeconds = Boolean(persona?.monthlyReadingSeconds);
   const topCategory = categoryInsights[0]?.category || persona?.topCategories[0] || '当前主线';
   const finishedRate = monthBooks.length ? Math.round((stats.finishedCount / monthBooks.length) * 100) : 0;
   const thoughtDensity = monthHighlights.length ? Math.round((monthHighlights.filter(highlight => highlight.thought).length / monthHighlights.length) * 100) : 0;
@@ -191,7 +195,9 @@ export default function PersonaPage() {
                       <p className="text-xl text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>{representativeBook.title}</p>
                       <p className="mt-1 text-sm text-ink-soft">{representativeBook.author}</p>
                       <p className="mt-5 text-sm leading-7 text-ink-soft">
-                        {data.source === 'weread' ? '这本书来自微信读书月度统计里的最长阅读排行。' : `你在这本书里停留了 ${formatReadingTime(representativeBook.readingSeconds)}，留下 ${representativeBook.highlightCount} 条划线。`}
+                        {data.source === 'weread' && hasSyncedMonthlyReadingSeconds
+                          ? `微信读书月度统计显示，你这个月在这本书里阅读了 ${formatReadingTime(representativeBookMonthlySeconds)}。`
+                          : `按本月阅读区间估算，你这个月在这本书里停留了 ${formatReadingTime(representativeBookMonthlySeconds)}，留下 ${representativeBook.highlightCount} 条划线。`}
                       </p>
                     </div>
                   </div>

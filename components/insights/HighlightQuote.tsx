@@ -6,6 +6,8 @@ interface Props {
   book?: Book;
   compact?: boolean;
   featured?: boolean;
+  showSourceLabel?: boolean;
+  showDate?: boolean;
 }
 
 function formatHighlightDate(value: string): string {
@@ -15,17 +17,28 @@ function formatHighlightDate(value: string): string {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export default function HighlightQuote({ highlight, book, compact = false, featured = false }: Props) {
+export default function HighlightQuote({
+  highlight,
+  book,
+  compact = false,
+  featured = false,
+  showSourceLabel = true,
+  showDate = true,
+}: Props) {
   const isPublic = highlight.source === 'weread_public';
+  const bookTitle = book?.title || highlight.bookTitle;
+  const bookAuthor = book?.author || highlight.bookAuthor;
 
   return (
     <article className={`relative overflow-hidden border border-line-soft/35 bg-paper-light ${compact ? 'p-4' : 'p-5'} ${featured ? 'quote-featured' : ''}`}>
       <div className="absolute left-0 top-0 h-full w-1 bg-sun-yellow/70" />
       <div className="flex items-start justify-between gap-4">
         <Quote className={`${compact ? 'h-4 w-4' : 'h-5 w-5'} mt-0.5 shrink-0 text-sun-yellow`} />
-        <span className="ink-label ml-auto">
-          {isPublic ? '公开划线' : '我的划线'}
-        </span>
+        {showSourceLabel && (
+          <span className="ink-label ml-auto">
+            {isPublic ? '公开划线' : '我的划线'}
+          </span>
+        )}
       </div>
       <p
         className={`${compact ? 'mt-3 text-base' : 'mt-4 text-lg'} leading-relaxed text-ink-deep`}
@@ -39,12 +52,14 @@ export default function HighlightQuote({ highlight, book, compact = false, featu
         </p>
       )}
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-soft">
-        {book && <span className="text-ink-deep">《{book.title}》 · {book.author}</span>}
+        {bookTitle && <span className="text-ink-deep">《{bookTitle}》{bookAuthor ? ` · ${bookAuthor}` : ''}</span>}
         {highlight.chapter && <span>{highlight.chapter}</span>}
-        <span className="inline-flex items-center gap-1">
-          <CalendarDays className="h-3 w-3" />
-          {formatHighlightDate(highlight.createdAt)}
-        </span>
+        {showDate && (
+          <span className="inline-flex items-center gap-1">
+            <CalendarDays className="h-3 w-3" />
+            {formatHighlightDate(highlight.createdAt)}
+          </span>
+        )}
       </div>
       {!compact && highlight.topicTags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">

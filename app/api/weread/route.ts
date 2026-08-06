@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Book, Highlight, UserData, Category, ReadingPersona } from '@/lib/adapters/types';
+import { Book, Highlight, UserData, Category, ReadingPersona, Recommendation } from '@/lib/adapters/types';
+import { getBookEvidenceTopics, getHighlightTopics } from '@/lib/insights';
 
 const WEREAD_API = 'https://i.weread.qq.com/api/agent/gateway';
 const SKILL_VERSION = '1.0.4';
@@ -165,7 +166,7 @@ function buildAnnualPersonas(statsByYear: Map<number, unknown>, highlights: High
       .map(item => normalizeCategory(String(item.categoryTitle || item.parentCategoryTitle || '')))
       .filter((category, index, arr) => arr.indexOf(category) === index)
       .slice(0, 3);
-    const yearHighlights = highlights.filter(highlight => highlight.createdAt.startsWith(String(year)));
+    const yearHighlights = highlights.filter(highlight => highlight.source === 'weread_personal' && highlight.createdAt.startsWith(String(year)));
     const representativeHighlight = yearHighlights[0]?.content || '';
     const totalSeconds = normalizeReadingSeconds(record.totalReadTime);
     const readDays = Number(record.readDays || 0);
@@ -198,13 +199,14 @@ function buildMonthlyPersonas(statsByMonth: Map<string, unknown>, highlights: Hi
     const record = stats && typeof stats === 'object' ? stats as Record<string, unknown> : {};
     const longest = Array.isArray(record.readLongest) ? record.readLongest[0] as Record<string, unknown> | undefined : undefined;
     const longestBook = longest?.book as Record<string, unknown> | undefined;
+    const longestBookMonthlySeconds = normalizeReadingSeconds(longest?.readTime ?? longest?.recordReadingTime);
     const preferCategory = Array.isArray(record.preferCategory) ? record.preferCategory.slice(0, 3) as Record<string, unknown>[] : [];
     const topCategories: Category[] = preferCategory
       .map(item => normalizeCategory(String(item.categoryTitle || item.parentCategoryTitle || '')))
       .filter((category, index, arr) => arr.indexOf(category) === index)
       .slice(0, 3);
     const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
-    const monthHighlights = highlights.filter(highlight => highlight.createdAt.startsWith(monthPrefix));
+    const monthHighlights = highlights.filter(highlight => highlight.source === 'weread_personal' && highlight.createdAt.startsWith(monthPrefix));
     const representativeHighlight = monthHighlights[0]?.content || '';
     const totalSeconds = normalizeReadingSeconds(record.totalReadTime);
     const readDays = Number(record.readDays || 0);
@@ -233,6 +235,7 @@ function buildMonthlyPersonas(statsByMonth: Map<string, unknown>, highlights: Hi
       description: `${month} 月你把最多时间交给了「${longestTitle}」，阅读重心集中在${categoryText}。这个月累计阅读 ${formatSecondsForText(totalSeconds)}，有效阅读 ${readDays} 天；如果把阅读看成一条思考线，这个月的线索更像是在为「${topTopic}」寻找证据，而不是随意翻过。`,
       topCategories: topCategories.length > 0 ? topCategories : ['文学' as Category],
       longestBook: longestTitle,
+      monthlyReadingSeconds: longestBookMonthlySeconds,
       topTopic,
       peakMonth: `${month}月`,
       totalSeconds,
@@ -269,6 +272,160 @@ function formatSecondsForText(seconds: number): string {
   const minutes = Math.floor((seconds % 3600) / 60);
   if (hours <= 0) return `${minutes} 分钟`;
   return `${hours} 小时 ${minutes} 分钟`;
+}
+
+function recordFrom(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function unwrapBookInfo(value: unknown): Record<string, unknown> {
+  const record = recordFrom(value);
+  const bookInfo = record.bookInfo;
+  if (bookInfo && typeof bookInfo === 'object') return recordFrom(bookInfo);
+  const book = record.book;
+  if (book && typeof book === 'object') {
+    const nested = recordFrom(book);
+    return nested.bookInfo && typeof nested.bookInfo === 'object' ? recordFrom(nested.bookInfo) : nested;
+  }
+  return record;
+}
+
+function extractSimilarBooks(payload: unknown): Record<string, unknown>[] {
+  const root = recordFrom(payload);
+  const similar = recordFrom(root.booksimilar || root.bookSimilar || root.similar);
+  const arrays = [root.books, similar.books, root.items];
+  const list = arrays.find(item => Array.isArray(item));
+  if (!Array.isArray(list)) return [];
+  return list.map(item => unwrapBookInfo(item)).filter(item => String(item.bookId || item.id || item.albumId || ''));
+}
+
+async function buildWereadRecommendations(apiKey: string, books: Book[], highlights: Highlight[]): Promise<Recommendation[]> {
+  const existingTitles = new Set(books.map(book => book.title.trim().toLowerCase()));
+  const personalHighlights = highlights.filter(highlight => highlight.source !== 'weread_public');
+  const recentBooks = books
+    .filter(book => book.status !== 'unstarted' && book.sourceBookId)
+    .sort((a, b) => (b.lastReadDate || '').localeCompare(a.lastReadDate || ''))
+    .slice(0, 6);
+  const similarResults = await Promise.all(recentBooks.map(async sourceBook => {
+    try {
+      const payload = await callWeReadAPI(apiKey, '/book/similar', {
+        bookId: sourceBook.sourceBookId,
+        count: 6,
+        maxIdx: 0,
+      });
+      return { sourceBook, candidates: extractSimilarBooks(payload) };
+    } catch {
+      return { sourceBook, candidates: [] };
+    }
+  }));
+
+  const recommendations: Recommendation[] = [];
+  const seenCandidates = new Set<string>();
+  for (const result of similarResults) {
+    const sourceTopics = getBookEvidenceTopics(result.sourceBook, personalHighlights, 4);
+    const evidenceTopics = sourceTopics.length > 0 ? sourceTopics : [result.sourceBook.category];
+    for (const candidate of result.candidates) {
+      const candidateId = String(candidate.bookId || candidate.id || candidate.albumId || '');
+      const candidateTitle = String(candidate.title || '').trim();
+      if (!candidateId || !candidateTitle || existingTitles.has(candidateTitle.toLowerCase()) || seenCandidates.has(candidateId)) continue;
+      seenCandidates.add(candidateId);
+
+      let info = candidate;
+      if (!candidate.intro && !candidate.description) {
+        try {
+          const fullInfo = await callWeReadAPI(apiKey, '/book/info', { bookId: candidateId });
+          info = { ...candidate, ...unwrapBookInfo(fullInfo) };
+        } catch {
+          info = candidate;
+        }
+      }
+
+      const description = String(info.intro || info.description || '').trim();
+      const title = String(info.title || candidateTitle).trim();
+      const author = String(info.author || '未知作者').trim();
+      const category = normalizeCategory(String(info.category || result.sourceBook.category));
+      const sourceTitle = result.sourceBook.title;
+      const topicText = evidenceTopics.join('、');
+      recommendations.push({
+        bookId: candidateId,
+        title,
+        author,
+        coverUrl: String(info.cover || info.coverUrl || '').trim() || undefined,
+        deepLink: String(info.deepLink || '').trim() || undefined,
+        description: description || undefined,
+        sourceBookId: result.sourceBook.id,
+        category,
+        reason: `你在《${sourceTitle}》的真实阅读记录里反复留下「${topicText}」相关线索，微信读书的相似书目把《${title}》接在这条主题线上。`,
+        evidence: [
+          ...evidenceTopics.slice(0, 3).map(value => ({ type: 'topic' as const, value })),
+          { type: 'book' as const, value: sourceTitle },
+        ],
+        confidence: Math.min(0.94, 0.7 + sourceTopics.length * 0.04),
+      });
+    }
+  }
+  return recommendations;
+}
+
+async function buildExternalPublicHighlights(apiKey: string, shelfBooks: Book[]): Promise<Highlight[]> {
+  const shelfIds = new Set(shelfBooks.map(book => book.sourceBookId).filter(Boolean));
+  const shelfTitles = new Set(shelfBooks.map(book => book.title.trim().toLowerCase()));
+  let candidates: Record<string, unknown>[] = [];
+  try {
+    const payload = await callWeReadAPI(apiKey, '/book/recommend', { count: 12, maxIdx: 0 });
+    candidates = extractSimilarBooks(payload);
+  } catch {
+    return [];
+  }
+
+  const publicHighlights: Highlight[] = [];
+  const externalCandidates = candidates.filter(candidate => {
+    const id = String(candidate.bookId || candidate.id || candidate.albumId || '');
+    const title = String(candidate.title || '').trim().toLowerCase();
+    return id && !shelfIds.has(id) && !shelfTitles.has(title);
+  }).slice(0, 8);
+
+  const results = await Promise.all(externalCandidates.map(async candidate => {
+    const bookId = String(candidate.bookId || candidate.id || candidate.albumId || '');
+    try {
+      const response = await callWeReadAPI(apiKey, '/book/bestbookmarks', {
+        bookId,
+        chapterUid: 0,
+        synckey: 0,
+      });
+      return { candidate, items: Array.isArray(response.items) ? response.items : [] };
+    } catch {
+      return { candidate, items: [] };
+    }
+  }));
+
+  for (const result of results) {
+    const candidateId = String(result.candidate.bookId || result.candidate.id || result.candidate.albumId || '');
+    const title = String(result.candidate.title || '').trim();
+    if (!candidateId || !title) continue;
+    const author = String(result.candidate.author || '').trim();
+    const deepLink = String(result.candidate.deepLink || '').trim() || undefined;
+    for (const item of result.items.slice(0, 2)) {
+      const record = recordFrom(item);
+      const content = String(record.markText || '').trim();
+      if (!content) continue;
+      publicHighlights.push({
+        id: `wp_external_${candidateId}_${record.bookmarkId || publicHighlights.length}`,
+        bookId: `public_${candidateId}`,
+        sourceBookId: candidateId,
+        bookTitle: title,
+        bookAuthor: author || undefined,
+        bookDeepLink: deepLink,
+        chapter: '',
+        content,
+        createdAt: timestampToDate(Number(record.createTime)) || new Date().toISOString().slice(0, 10),
+        source: 'weread_public',
+        isFeatured: false,
+        topicTags: [],
+      });
+    }
+  }
+  return publicHighlights;
 }
 
 export async function POST(req: NextRequest) {
@@ -384,7 +541,14 @@ export async function POST(req: NextRequest) {
         title: ((b as Record<string, unknown>).title as string) || '未知书名',
         author: ((b as Record<string, unknown>).author as string) || '未知作者',
         coverUrl: ((b as Record<string, unknown>).cover as string) || undefined,
-        category: normalizeCategory(((b as Record<string, unknown>).category as string) || ''),
+        category: normalizeCategory(String(
+          (b as Record<string, unknown>).categoryTitle
+          || (b as Record<string, unknown>).parentCategoryTitle
+          || (b as Record<string, unknown>).categoryName
+          || (b as Record<string, unknown>).category
+          || (b as Record<string, unknown>).bookCategory
+          || '',
+        )),
         status,
         startDate,
         endDate: pi?.finishTime ? timestampToDate(pi.finishTime) : null,
@@ -402,7 +566,8 @@ export async function POST(req: NextRequest) {
 
     // 5. 获取划线内容（前10本有笔记的书）
     const highlights: Highlight[] = [];
-    const booksWithNotes = noteBooks.filter(nb => ((nb as Record<string, unknown>).noteCount as number) > 0).slice(0, 10);
+    const booksWithNotes = noteBooks.filter(nb => ((nb as Record<string, unknown>).noteCount as number) > 0).slice(0, 20);
+    highlights.push(...await buildExternalPublicHighlights(apiKey, books));
 
     for (const nb of booksWithNotes) {
       const bookId = String((nb as Record<string, unknown>).bookId || '');
@@ -415,7 +580,7 @@ export async function POST(req: NextRequest) {
         for (const ch of chapters) {
           chapterMap.set((ch as Record<string, unknown>).chapterUid as number, (ch as Record<string, unknown>).title as string);
         }
-        for (const h of updated.slice(0, 20)) {
+        for (const h of updated.slice(0, 30)) {
           const chUid = (h as Record<string, unknown>).chapterUid as number;
           highlights.push({
             id: `wh_${(h as Record<string, unknown>).bookmarkId || highlights.length}`,
@@ -455,8 +620,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. 获取想法（前5本）
-    const booksWithThoughts = noteBooks.filter(nb => ((nb as Record<string, unknown>).reviewCount as number) > 0).slice(0, 5);
+    // 6. 获取想法（前10本）
+    const booksWithThoughts = noteBooks.filter(nb => ((nb as Record<string, unknown>).reviewCount as number) > 0).slice(0, 10);
     for (const nb of booksWithThoughts) {
       const bookId = String((nb as Record<string, unknown>).bookId || '');
       if (!bookId) continue;
@@ -475,6 +640,13 @@ export async function POST(req: NextRequest) {
       } catch { /* skip */ }
     }
 
+    // 7. 用用户自己的划线与想法提炼聚合主题，不使用固定主题数据。
+    for (const highlight of highlights) {
+      if (highlight.source !== 'weread_personal') continue;
+      highlight.topicTags = getHighlightTopics(highlight);
+    }
+
+    const recommendations = await buildWereadRecommendations(apiKey, books, highlights);
     const personas = [
       ...buildMonthlyPersonas(monthlyStatsByMonth, highlights),
       ...buildAnnualPersonas(annualStatsByYear, highlights),
@@ -485,7 +657,7 @@ export async function POST(req: NextRequest) {
       books,
       highlights,
       readingEvents: [],
-      recommendations: [],
+      recommendations,
       personas,
       lastSyncTime: new Date().toISOString(),
       source: 'weread',

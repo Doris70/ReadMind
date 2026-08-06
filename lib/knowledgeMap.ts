@@ -149,19 +149,6 @@ export function buildKnowledgeMap(data: UserData, range: KnowledgeRange = 'all')
     }
   }
 
-  for (const recommendation of data.recommendations) {
-    for (const evidence of recommendation.evidence) {
-      if (evidence.type !== 'topic') continue;
-      const theme = normalizeTheme(evidence.value);
-      const relatedBooks = recommendation.evidence
-        .filter(item => item.type === 'book')
-        .flatMap(item => data.books.filter(book => book.title.includes(item.value) || item.value.includes(book.title)));
-      if (relatedBooks.length === 0) continue;
-      const current = fallbackThemeBooks.get(theme) || [];
-      fallbackThemeBooks.set(theme, [...current, ...relatedBooks]);
-    }
-  }
-
   const topThemes = [...new Set([...themeBuckets.keys(), ...fallbackThemeBooks.keys()])]
     .map(theme => [theme, themeBuckets.get(theme) || []] as [string, Highlight[]])
     .filter(([theme, items]) => items.length > 0 || (fallbackThemeBooks.get(theme) || []).length > 0)
@@ -179,6 +166,13 @@ export function buildKnowledgeMap(data: UserData, range: KnowledgeRange = 'all')
 
   const nodes: KnowledgeNode[] = [];
   const edges: KnowledgeEdge[] = [];
+  const booksByCategory = new Map<Category, Book[]>();
+  for (const book of involvedBooks) {
+    const current = booksByCategory.get(book.category) || [];
+    current.push(book);
+    booksByCategory.set(book.category, current);
+  }
+  const categoryGroups = [...booksByCategory.entries()];
 
   topThemes.forEach(([theme, items], index) => {
     const point = circlePoint(index, topThemes.length, 18, 50, 50, -Math.PI / 2);
@@ -197,8 +191,12 @@ export function buildKnowledgeMap(data: UserData, range: KnowledgeRange = 'all')
     });
   });
 
-  involvedBooks.forEach((book, index) => {
-    const point = circlePoint(index, involvedBooks.length, 37, 50, 50, Math.PI / 7);
+  involvedBooks.forEach(book => {
+    const categoryIndex = categoryGroups.findIndex(([category]) => category === book.category);
+    const categoryBooks = booksByCategory.get(book.category) || [book];
+    const bookIndex = categoryBooks.findIndex(item => item.id === book.id);
+    const cluster = circlePoint(categoryIndex, categoryGroups.length, 36, 50, 50, Math.PI / 7);
+    const point = circlePoint(bookIndex, categoryBooks.length, Math.min(5.8, 2.5 + categoryBooks.length * 0.45), cluster.x, cluster.y, Math.PI / 6);
     const bookHighlights = highlights.filter(highlight => highlight.bookId === book.id);
     nodes.push({
       id: `book:${book.id}`,
@@ -216,7 +214,7 @@ export function buildKnowledgeMap(data: UserData, range: KnowledgeRange = 'all')
   });
 
   const ideaHighlights = highlights
-    .filter(highlight => highlight.thought || highlight.isFeatured)
+    .filter(highlight => highlight.source === 'weread_personal' && Boolean(highlight.thought))
     .sort((a, b) => inferThemes(b).length - inferThemes(a).length || b.createdAt.localeCompare(a.createdAt))
     .slice(0, 10);
 
@@ -236,46 +234,6 @@ export function buildKnowledgeMap(data: UserData, range: KnowledgeRange = 'all')
       origin: highlight.thought ? 'thought' : 'highlight',
     });
   });
-
-  if (ideaHighlights.length < 6) {
-    const inferredIdeas = [
-      ...data.recommendations.map(recommendation => {
-        const relatedBooks = recommendation.evidence
-          .filter(item => item.type === 'book')
-          .flatMap(item => data.books.filter(book => book.title.includes(item.value) || item.value.includes(book.title)));
-        return {
-        label: recommendation.quote || recommendation.reason.slice(0, 24),
-        description: recommendation.reason,
-        bookIds: [...new Set(relatedBooks.map(book => book.id))],
-        themes: recommendation.evidence.filter(item => item.type === 'topic').map(item => normalizeTheme(item.value)),
-      };
-      }),
-      ...topThemes.map(([theme, items]) => ({
-        label: `继续追问：${theme}`,
-        description: items.length > 0
-          ? `这些划线共同指向「${theme}」，适合整理成一条可复用的个人观点。`
-          : `你的书架类别显示「${theme}」值得继续展开，当前仍缺少足够的原始划线。`,
-        bookIds: [...new Set([...(fallbackThemeBooks.get(theme) || []).map(book => book.id), ...items.map(item => item.bookId)])].slice(0, 3),
-        themes: [theme],
-      })),
-    ].filter(idea => idea.bookIds.length > 0 || idea.themes.some(theme => topThemes.some(([name]) => name === theme)));
-    inferredIdeas.slice(0, 6 - ideaHighlights.length).forEach((idea, index) => {
-      const point = circlePoint(index + ideaHighlights.length, 6, 29, 50, 50, Math.PI / 3);
-      nodes.push({
-        id: `idea:inferred:${index}`,
-        type: 'idea',
-        label: idea.label,
-        weight: 2,
-        bookIds: idea.bookIds,
-        highlightIds: [],
-        x: point.x,
-        y: point.y,
-        color: '#E5D58A',
-        description: idea.description,
-        origin: 'inferred',
-      });
-    });
-  }
 
   for (const [theme, items] of topThemes) {
     const themeId = `theme:${theme}`;

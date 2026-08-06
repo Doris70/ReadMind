@@ -57,14 +57,18 @@ export default function SetupPage() {
   const [error, setError] = useState('');
   const [previewData, setPreviewData] = useState<{ bookCount: number; highlightCount: number } | null>(null);
   const [importedData, setImportedData] = useState<unknown>(null);
-  const [manualBooks, setManualBooks] = useState<Book[]>([createManualBook(0)]);
+  const [manualBooks, setManualBooks] = useState<Book[]>([]);
   const [showApiGuide, setShowApiGuide] = useState(false);
 
   useEffect(() => {
     const stored = loadUserData();
     const draft = loadManualBooksDraft();
     const storedManualData = loadManualData();
-    const savedManualBooks = storedManualData?.books || stored?.books.filter(isManualBook) || [];
+    const savedManualBookMap = new Map<string, Book>();
+    for (const book of [...(storedManualData?.books || []), ...(stored?.books.filter(isManualBook) || [])]) {
+      savedManualBookMap.set(`${book.title.trim().toLowerCase()}::${book.author.trim().toLowerCase()}`, book);
+    }
+    const savedManualBooks = [...savedManualBookMap.values()];
     if (!storedManualData && stored && savedManualBooks.length > 0) {
       const manualIds = new Set(savedManualBooks.map(book => book.id));
       saveManualData({
@@ -79,8 +83,8 @@ export default function SetupPage() {
     setHasManualData(savedManualBooks.length > 0);
     if (draft.length > 0) {
       setManualBooks(draft);
-    } else if (savedManualBooks.length > 0) {
-      setManualBooks(savedManualBooks);
+    } else {
+      setManualBooks([createManualBook(0)]);
     }
     setSetupHydrated(true);
   }, []);
@@ -182,10 +186,20 @@ export default function SetupPage() {
     }
 
     const current = existingData || loadUserData();
+    const currentManualData = loadManualData();
+    const savedManualBooks = [...(currentManualData?.books || []), ...(current?.books.filter(isManualBook) || [])];
+    const mergedManualBooks = new Map<string, Book>();
+    for (const book of savedManualBooks) {
+      mergedManualBooks.set(`${book.title.trim().toLowerCase()}::${book.author.trim().toLowerCase()}`, book);
+    }
+    for (const book of validBooks) {
+      mergedManualBooks.set(`${book.title.trim().toLowerCase()}::${book.author.trim().toLowerCase()}`, book);
+    }
+    const allManualBooks = [...mergedManualBooks.values()];
     const preservedBooks = current?.books.filter(book => !isManualBook(book)) || [];
     const data: UserData = {
       userId: current?.userId || 'manual-user',
-      books: [...preservedBooks, ...validBooks],
+      books: [...preservedBooks, ...allManualBooks],
       highlights: current?.highlights || [],
       readingEvents: current?.readingEvents || [],
       recommendations: current?.recommendations || [],
@@ -193,13 +207,12 @@ export default function SetupPage() {
       lastSyncTime: new Date().toISOString(),
       source: current?.source === 'weread' ? 'weread' : 'manual',
     };
-    const manualIds = new Set(validBooks.map(book => book.id));
-    const currentManualData = loadManualData();
+    const manualIds = new Set(allManualBooks.map(book => book.id));
     saveManualData({
       ...data,
-      books: validBooks,
-      highlights: currentManualData?.highlights || data.highlights.filter(highlight => manualIds.has(highlight.bookId)),
-      readingEvents: currentManualData?.readingEvents || data.readingEvents.filter(event => manualIds.has(event.bookId)),
+      books: allManualBooks,
+      highlights: data.highlights.filter(highlight => manualIds.has(highlight.bookId)),
+      readingEvents: data.readingEvents.filter(event => manualIds.has(event.bookId)),
       recommendations: currentManualData?.recommendations || [],
       personas: currentManualData?.personas || [],
       source: 'manual',
@@ -295,7 +308,7 @@ export default function SetupPage() {
                   onClick={() => setStep('manual')}
                   className="flex-1 px-4 py-2.5 bg-paper-light border border-line-soft text-ink-deep rounded-md text-sm font-medium hover:bg-paper-mist transition-colors"
                 >
-                  {existingData && manualBooks.some(book => book.title.trim()) ? '继续编辑我的书籍' : '添加我的书籍'}
+                  录入新的书籍
                 </button>
                 {hasManualData && (
                   <button
@@ -314,8 +327,8 @@ export default function SetupPage() {
           <div className="bg-paper-warm rounded-lg border border-line-soft/30 p-5 animate-fade-in">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-medium text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>自主导入书籍</h2>
-                <p className="mt-1 text-sm text-ink-soft">日期后续也会进入书迹轴计算。结束日期可以留空，表示仍在阅读。</p>
+                <h2 className="text-xl font-medium text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>录入新的书籍</h2>
+                <p className="mt-1 text-sm text-ink-soft">新书会追加到已有书架。日期后续也会进入书迹轴计算，结束日期可以留空。</p>
               </div>
               <button
                 onClick={() => setManualBooks(current => [...current, createManualBook(current.length)])}

@@ -16,7 +16,7 @@ export default function NavBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-0 z-50 bg-paper-mist/80 backdrop-blur-md border-b border-line-soft/20">
+    <nav className="top-nav sticky top-0 z-50 border-b border-line-soft/20 bg-paper-mist/80 backdrop-blur-md">
       <div className="max-w-[1280px] mx-auto px-6 h-14 flex items-center justify-between">
         <Link href="/" className="text-xl font-bold text-ink-deep tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>
           ReadMind
@@ -29,27 +29,27 @@ export default function NavBar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                className={`top-nav-link flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm ${isActive ? 'is-active' : ''} ${
                   isActive
-                    ? 'bg-sprout-green/10 text-sprout-green font-medium'
-                    : 'text-ink-soft hover:text-ink-deep hover:bg-paper-warm'
+                    ? 'text-sprout-green font-medium'
+                    : 'text-ink-soft hover:text-ink-deep'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="top-nav-icon h-4 w-4" />
                 <span className="hidden sm:inline">{item.label}</span>
               </Link>
             );
           })}
           <Link
             href="/setup"
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+            className={`top-nav-link flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm ${pathname === '/setup' ? 'is-active' : ''} ${
               pathname === '/setup'
-                ? 'bg-sprout-green/10 font-medium text-sprout-green'
-                : 'text-ink-soft hover:bg-paper-warm hover:text-ink-deep'
+                ? 'font-medium text-sprout-green'
+                : 'text-ink-soft hover:text-ink-deep'
             }`}
             title="数据设置"
           >
-            <Settings2 className="h-4 w-4" />
+            <Settings2 className="top-nav-icon h-4 w-4" />
             <span className="hidden sm:inline">数据设置</span>
           </Link>
         </div>

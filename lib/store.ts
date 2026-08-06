@@ -129,6 +129,46 @@ export function updateStoredBook(book: Book): UserData | null {
   return next;
 }
 
+export function removeStoredBook(bookId: string): UserData | null {
+  const current = loadUserData();
+  if (!current) return null;
+  const next: UserData = {
+    ...current,
+    books: current.books.filter(book => book.id !== bookId),
+    highlights: current.highlights.filter(highlight => highlight.bookId !== bookId),
+    readingEvents: current.readingEvents.filter(event => event.bookId !== bookId),
+    lastSyncTime: new Date().toISOString(),
+  };
+  saveUserData(next);
+
+  const manualData = loadManualData();
+  if (manualData?.books.some(book => book.id === bookId)) {
+    saveManualData({
+      ...manualData,
+      books: manualData.books.filter(book => book.id !== bookId),
+      highlights: manualData.highlights.filter(highlight => highlight.bookId !== bookId),
+      readingEvents: manualData.readingEvents.filter(event => event.bookId !== bookId),
+    });
+  }
+
+  const wereadData = loadWereadData();
+  if (wereadData?.books.some(book => book.id === bookId)) {
+    saveWereadData({
+      ...wereadData,
+      books: wereadData.books.filter(book => book.id !== bookId),
+      highlights: wereadData.highlights.filter(highlight => highlight.bookId !== bookId),
+      readingEvents: wereadData.readingEvents.filter(event => event.bookId !== bookId),
+    });
+  }
+
+  saveManualBooksDraft(loadManualBooksDraft().filter(book => book.id !== bookId));
+  if (typeof window !== 'undefined') {
+    const recent = loadRecentOpenedBooks().filter(item => item.bookId !== bookId);
+    localStorage.setItem(RECENT_OPENED_KEY, JSON.stringify(recent));
+  }
+  return next;
+}
+
 export function addStoredBook(book: Book): UserData | null {
   const current = loadUserData();
   if (!current) return null;

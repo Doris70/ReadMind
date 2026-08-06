@@ -8,6 +8,17 @@ export interface CategoryInsight {
   color: string;
 }
 
+export interface TopicInsight {
+  label: string;
+  highlightCount: number;
+  thoughtCount: number;
+  bookCount: number;
+  books: string[];
+  percentage: number;
+  source: 'highlight' | 'category';
+  color: string;
+}
+
 export interface ReadingStats {
   books: Book[];
   totalSeconds: number;
@@ -52,6 +63,21 @@ export function getMonthBooks(data: UserData, year: number, month: number): Book
     if (!start) return false;
     return start <= monthEnd && end >= monthStart;
   });
+}
+
+export function getBookMonthReadingSeconds(book: Book, year: number, month: number): number {
+  if (book.status === 'unstarted' || book.readingSeconds <= 0) return 0;
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  const start = parseLocalDate(book.startDate || book.lastReadDate);
+  const end = parseLocalDate(book.endDate || book.lastReadDate) || new Date();
+  if (!start || start > monthEnd || end < monthStart) return 0;
+
+  const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+  const overlapStart = start > monthStart ? start : monthStart;
+  const overlapEnd = end < monthEnd ? end : monthEnd;
+  const overlapDays = Math.max(0, Math.round((overlapEnd.getTime() - overlapStart.getTime()) / 86400000) + 1);
+  return Math.round(book.readingSeconds * (overlapDays / totalDays));
 }
 
 export function getMonthLabel(month: number): string {
@@ -113,14 +139,110 @@ export function getTopHighlights(highlights: Highlight[], limit = 5): Highlight[
 }
 
 export function getTopics(data: UserData, limit = 8): string[] {
+  return getTopicInsights(data, limit).map(topic => topic.label);
+}
+
+const TOPIC_COLORS = ['#7FAE8F', '#93B8C6', '#C98D82', '#B9A8C5', '#D7C68C', '#86A99A', '#A8BE8A'];
+
+export function getTopicInsights(data: UserData, limit = 8): TopicInsight[] {
+  const bookMap = new Map(data.books.map(book => [book.id, book]));
+  const entries = new Map<string, {
+    highlightCount: number;
+    thoughtCount: number;
+    books: Set<string>;
+    source: 'highlight' | 'category';
+  }>();
+
+  data.highlights
+    .filter(highlight => highlight.source !== 'weread_public')
+    .forEach(highlight => {
+      const book = bookMap.get(highlight.bookId);
+      const inferredTopics = getHighlightTopics(highlight);
+      const topics = inferredTopics.length > 0
+        ? inferredTopics
+        : (book?.category ? [book.category] : []);
+
+      topics.forEach(topic => {
+        const current = entries.get(topic) || {
+          highlightCount: 0,
+          thoughtCount: 0,
+          books: new Set<string>(),
+          source: inferredTopics.length > 0 ? 'highlight' : 'category',
+        };
+        current.highlightCount += 1;
+        current.thoughtCount += highlight.thought ? 1 : 0;
+        if (book?.title) current.books.add(book.title);
+        if (inferredTopics.length > 0) current.source = 'highlight';
+        entries.set(topic, current);
+      });
+    });
+
+  const sorted = [...entries.entries()]
+    .map(([label, value]) => ({
+      label,
+      ...value,
+      bookCount: value.books.size,
+      books: [...value.books].slice(0, 3),
+      score: value.highlightCount + value.books.size * 1.8 + value.thoughtCount * 0.7,
+    }))
+    .sort((a, b) => b.score - a.score || b.bookCount - a.bookCount || a.label.localeCompare(b.label))
+    .slice(0, limit);
+  const maxScore = sorted[0]?.score || 1;
+
+  return sorted.map((topic, index) => ({
+    label: topic.label,
+    highlightCount: topic.highlightCount,
+    thoughtCount: topic.thoughtCount,
+    bookCount: topic.bookCount,
+    books: topic.books,
+    percentage: Math.max(12, Math.round((topic.score / maxScore) * 100)),
+    source: topic.source,
+    color: TOPIC_COLORS[index % TOPIC_COLORS.length],
+  }));
+}
+
+export function getHighlightTopics(highlight: Highlight): string[] {
+  const text = `${highlight.content} ${highlight.thought || ''}`;
+  return [...new Set([
+    ...highlight.topicTags.map(canonicalTopic),
+    ...inferTextTopics(text),
+  ])].filter(Boolean);
+}
+
+export function getBookEvidenceTopics(book: Book, highlights: Highlight[], limit = 5): string[] {
   const counts = new Map<string, number>();
-  data.highlights.forEach(highlight => {
-    highlight.topicTags.forEach(tag => counts.set(tag, (counts.get(tag) || 0) + 1));
-  });
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1])
+  highlights
+    .filter(highlight => highlight.bookId === book.id)
+    .forEach(highlight => {
+      getHighlightTopics(highlight).forEach(topic => counts.set(topic, (counts.get(topic) || 0) + 1));
+    });
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limit)
-    .map(([tag]) => tag);
+    .map(([topic]) => topic);
+}
+
+const aggregateTopicRules: { label: string; keywords: string[] }[] = [
+  { label: '长期主义', keywords: ['长期', '复利', '耐心', '积累', '延迟满足', '时间', '坚持', '未来'] },
+  { label: '认知偏差', keywords: ['认知', '偏见', '偏差', '判断', '选择', '理性', '决策', '思维', '直觉'] },
+  { label: '组织与制度', keywords: ['制度', '组织', '政府', '市场', '财政', '激励', '治理', '权力', '规则', '管理'] },
+  { label: '关系与自我', keywords: ['关系', '自我', '情绪', '孤独', '幸福', '成长', '边界', '身份', '人格', '亲密'] },
+  { label: '文明与历史', keywords: ['文明', '历史', '社会', '人类', '地理', '传统', '时代', '国家', '战争', '文化'] },
+  { label: '财富与决策', keywords: ['财富', '经济', '金钱', '风险', '投资', '成本', '贫穷', '收入', '资本', '消费'] },
+  { label: '技术与系统', keywords: ['技术', '计算机', '系统', '工程', '代码', '软件', '设计', '科学', '网络', '机器'] },
+  { label: '学习与成长', keywords: ['学习', '练习', '反馈', '能力', '技能', '教育', '训练', '方法', '习惯'] },
+  { label: '注意力与媒介', keywords: ['注意力', '专注', '媒介', '信息', '娱乐', '阅读', '拖延', '屏幕', '传播'] },
+];
+
+function canonicalTopic(topic: string): string {
+  const clean = topic.trim().replace(/[“”"'「」《》]/g, '');
+  if (!clean || /人物|章节|朱元璋|历史人物|作者/.test(clean)) return '';
+  const matched = aggregateTopicRules.find(rule => rule.keywords.some(keyword => clean.includes(keyword) || keyword.includes(clean)));
+  return matched?.label || (clean.length >= 3 ? clean : '');
+}
+
+function inferTextTopics(text: string): string[] {
+  return aggregateTopicRules.filter(rule => rule.keywords.some(keyword => text.includes(keyword))).map(rule => rule.label);
 }
 
 export function getReadingGaps(data: UserData): { label: string; detail: string; color: string }[] {
@@ -130,7 +252,7 @@ export function getReadingGaps(data: UserData): { label: string; detail: string;
   const missing = allCategories.filter(category => !seen.has(category));
 
   if (missing.length > 0) {
-    return missing.slice(0, 2).map(category => ({
+    return missing.slice(0, 4).map(category => ({
       label: `${category}还没有留下足迹`,
       detail: '可以作为下一次阅读的轻微偏航，给地图留一个新入口。',
       color: CATEGORY_COLORS[category],
@@ -139,7 +261,18 @@ export function getReadingGaps(data: UserData): { label: string; detail: string;
 
   const lightest = [...categoryInsights].sort((a, b) => a.seconds - b.seconds)[0];
   if (!lightest) return [];
-  return [{
+  return categoryInsights.length > 2 ? [
+    {
+      label: `${lightest.category}的阅读停留较少`,
+      detail: '你的阅读重心已经很清晰，也可以偶尔为这个方向留出一小段时间，让地图出现新的入口。',
+      color: lightest.color,
+    },
+    {
+      label: '跨类别连接还可以增加',
+      detail: `目前主要集中在${categoryInsights.slice(0, 2).map(item => item.category).join('与')}，可以选一本相邻类别的书做一次交叉阅读。`,
+      color: '#93B8C6',
+    },
+  ] : [{
     label: `${lightest.category}的阅读停留较少`,
     detail: '你的阅读重心很清晰，也可以偶尔为这个方向留出一小段时间。',
     color: lightest.color,

@@ -150,6 +150,10 @@ export default function KnowledgePage() {
     nodeInteractionRef.current = true;
     svgRef.current?.setPointerCapture(event.pointerId);
     setDraggingNodeId(nodeId);
+    selectNode(nodeId);
+  };
+
+  const selectNode = (nodeId: string) => {
     setSelectedNodeId(nodeId);
     setActiveFlowNodeId(nodeId);
   };
@@ -342,8 +346,7 @@ export default function KnowledgePage() {
                     onClick={event => {
                       event.stopPropagation();
                       nodeInteractionRef.current = false;
-                      setSelectedNodeId(node.id);
-                      setActiveFlowNodeId(node.id);
+                      selectNode(node.id);
                     }}
                   >
                     <circle cx={node.x} cy={node.y} r={size + (isSelected ? 4.4 : 2.6)} fill={node.color} opacity={isSelected ? 0.22 : 0.11} filter="url(#halo)" className={isSelected ? 'knowledge-node-halo' : ''} />
@@ -423,16 +426,36 @@ export default function KnowledgePage() {
                   <span className="ink-label">RELATED BOOKS</span>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {selectedBooks.map(book => (
-                      <span key={book.id} className="border border-line-soft/40 bg-paper-light px-2.5 py-1 text-xs text-ink-soft">{book.title}</span>
+                      <button key={book.id} onClick={() => selectNode(`book:${book.id}`)} className="border border-line-soft/40 bg-paper-light px-2.5 py-1 text-left text-xs text-ink-soft transition-colors hover:border-sprout-green hover:text-ink-deep">{book.title}</button>
                     ))}
                   </div>
                 </div>
+                {selectedNode.type === 'book' && (
+                  <>
+                    <div className="mt-6">
+                      <span className="ink-label">CONNECTED THEMES</span>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {relatedThemes.length > 0 ? relatedThemes.map(theme => (
+                          <button key={theme.id} onClick={() => selectNode(theme.id)} className="border border-water-blue/40 bg-water-blue/10 px-2.5 py-1 text-xs text-ink-deep transition-colors hover:border-water-blue hover:bg-water-blue/20">{theme.label}</button>
+                        )) : <span className="text-xs text-ink-soft">这本书暂时还没有聚合出可展示的主题。</span>}
+                      </div>
+                    </div>
+                    <div className="mt-6">
+                      <span className="ink-label">CONNECTED IDEAS</span>
+                      <div className="mt-3 space-y-2">
+                        {relatedIdeas.length > 0 ? relatedIdeas.slice(0, 5).map(idea => (
+                          <button key={idea.id} onClick={() => selectNode(idea.id)} className="block w-full border-l-2 border-sun-yellow bg-paper-light px-3 py-2 text-left text-xs leading-5 text-ink-deep transition-colors hover:bg-sun-yellow/10">{idea.label}</button>
+                        )) : <span className="text-xs text-ink-soft">这本书暂时还没有关联观点。</span>}
+                      </div>
+                    </div>
+                  </>
+                )}
                 {selectedNode.type === 'idea' && (
                   <div className="mt-6">
                     <span className="ink-label">RELATED THEMES</span>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {relatedThemes.length > 0 ? relatedThemes.map(theme => (
-                        <button key={theme.id} onClick={() => { setSelectedNodeId(theme.id); setActiveFlowNodeId(theme.id); }} className="border border-water-blue/40 bg-water-blue/10 px-2.5 py-1 text-xs text-ink-deep">{theme.label}</button>
+                        <button key={theme.id} onClick={() => selectNode(theme.id)} className="border border-water-blue/40 bg-water-blue/10 px-2.5 py-1 text-xs text-ink-deep">{theme.label}</button>
                       )) : <span className="text-xs text-ink-soft">暂时没有直接主题连接。</span>}
                     </div>
                   </div>
@@ -442,7 +465,7 @@ export default function KnowledgePage() {
                     <span className="ink-label">RELATED IDEAS</span>
                     <div className="mt-3 space-y-2">
                       {relatedIdeas.length > 0 ? relatedIdeas.slice(0, 5).map(idea => (
-                        <button key={idea.id} onClick={() => { setSelectedNodeId(idea.id); setActiveFlowNodeId(idea.id); }} className="block w-full border-l-2 border-sun-yellow bg-paper-light px-3 py-2 text-left text-xs leading-5 text-ink-deep">{idea.label}</button>
+                        <button key={idea.id} onClick={() => selectNode(idea.id)} className="block w-full border-l-2 border-sun-yellow bg-paper-light px-3 py-2 text-left text-xs leading-5 text-ink-deep">{idea.label}</button>
                       )) : <span className="text-xs text-ink-soft">这个主题还没有提炼出观点。</span>}
                     </div>
                   </div>

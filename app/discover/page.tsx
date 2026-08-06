@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Check, Compass, ExternalLink, EyeOff, Heart, RotateCcw, RefreshCw, Sparkles, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Check, Compass, ExternalLink, EyeOff, Heart, RotateCcw, RefreshCw, Sparkles, X } from 'lucide-react';
 import NavBar from '@/components/ui/NavBar';
 import HighlightQuote from '@/components/insights/HighlightQuote';
 import { UserData, Recommendation, Book, CATEGORY_COLORS } from '@/lib/adapters/types';
@@ -14,7 +14,7 @@ import {
   saveUserData,
 } from '@/lib/store';
 import { generateRecommendations } from '@/lib/ai';
-import { getReadingGaps, getTopHighlights, getTopics } from '@/lib/insights';
+import { getReadingGaps, getTopHighlights, getTopicInsights } from '@/lib/insights';
 
 const feedbackOptions = ['暂时不想读', '题材不合适', '已经读过了'];
 const recommendationPageSize = 4;
@@ -54,6 +54,7 @@ export default function DiscoverPage() {
   const [reasonOpen, setReasonOpen] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [wave, setWave] = useState(0);
+  const [highlightIndex, setHighlightIndex] = useState(0);
 
   useEffect(() => {
     const stored = loadUserData();
@@ -80,10 +81,22 @@ export default function DiscoverPage() {
 
   if (!data) return null;
 
-  const topics = getTopics(data, 8);
+  const topicInsights = getTopicInsights({
+    ...data,
+    highlights: data.highlights.filter(highlight => highlight.source !== 'weread_public'),
+  }, 8);
   const gaps = getReadingGaps(data);
   const publicHighlights = data.highlights.filter(highlight => highlight.source === 'weread_public');
-  const highlightPreview = getTopHighlights(publicHighlights.length > 0 ? publicHighlights : data.highlights, 2);
+  const highlightPreview = getTopHighlights(publicHighlights, 8);
+  const currentHighlight = highlightPreview[highlightIndex % Math.max(highlightPreview.length, 1)] || null;
+  const currentHighlightBook = currentHighlight ? data.books.find(book => book.id === currentHighlight.bookId) : undefined;
+  const relatedHighlightRecommendation = currentHighlight
+    ? recommendations.find(recommendation => (
+      recommendation.bookId === currentHighlight.sourceBookId
+      || recommendation.sourceBookId === currentHighlight.sourceBookId
+      || (currentHighlightBook && recommendation.evidence.some(evidence => evidence.type === 'book' && evidence.value === currentHighlightBook.title))
+    ))
+    : undefined;
 
   const showToast = (message: string) => {
     setToast(message);
@@ -170,13 +183,52 @@ export default function DiscoverPage() {
           </div>
         </header>
 
-        <section className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
+        <section className="space-y-10">
           <div className="section-rule pt-7">
             <span className="ink-label">CURRENT THEMES</span>
             <h2 className="mt-2 text-2xl text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>你最近反复经过的主题</h2>
-            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3">
-              {topics.map(topic => <span key={topic} className="text-sm text-ink-deep">#{topic}</span>)}
-              {topics.length === 0 && <span className="text-sm text-ink-soft">还没有足够的主题数据。</span>}
+            <p className="mt-3 max-w-xl text-xs leading-6 text-ink-soft">
+              主题来自你的划线、想法和它们所属的书籍交叉统计；书越多次回到同一问题，主题越亮。
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {topicInsights.map((topic, index) => (
+                <article
+                  key={topic.label}
+                  className="group relative overflow-hidden border border-line-soft/40 bg-paper-light/60 p-4 transition-transform duration-300 hover:-translate-y-1"
+                >
+                  <span
+                    className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-20 blur-2xl transition-transform duration-500 group-hover:scale-125"
+                    style={{ backgroundColor: topic.color }}
+                  />
+                  <div className="relative flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-ink-soft" style={{ fontFamily: 'var(--font-number)' }}>
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="text-[11px] text-ink-soft">
+                      {topic.bookCount} 本书 · {topic.highlightCount} 条痕迹
+                    </span>
+                  </div>
+                  <h3 className="relative mt-4 text-lg text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>
+                    {topic.label}
+                  </h3>
+                  <div className="relative mt-3 h-1 overflow-hidden bg-line-soft/30">
+                    <span className="block h-full transition-all duration-700" style={{ width: `${topic.percentage}%`, backgroundColor: topic.color }} />
+                  </div>
+                  <p className="relative mt-3 min-h-10 text-xs leading-5 text-ink-soft">
+                    {topic.books.length > 0 ? `来自《${topic.books.join('》《')}》` : '来自你的阅读痕迹'}
+                  </p>
+                  {topic.thoughtCount > 0 && (
+                    <span className="relative mt-2 inline-flex text-[11px] text-ink-deep">
+                      含 {topic.thoughtCount} 条自己的想法
+                    </span>
+                  )}
+                </article>
+              ))}
+              {topicInsights.length === 0 && (
+                <div className="border-l-2 border-line-soft px-4 py-5 text-sm leading-7 text-ink-soft sm:col-span-2">
+                  同步微信读书后，这里会根据你的真实划线、想法与阅读书目生成主题。
+                </div>
+              )}
             </div>
           </div>
           <div className="section-rule pt-7">
@@ -199,17 +251,36 @@ export default function DiscoverPage() {
               <span className="ink-label">HIGHLIGHT PREVIEW</span>
               <h2 className="mt-2 text-2xl text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>先听见一句话，再决定要不要靠近</h2>
             </div>
-            <span className="text-xs text-ink-soft">{publicHighlights.length > 0 ? '公开划线' : '我的划线'}</span>
+            <button
+              onClick={() => setHighlightIndex(index => (index + 1) % Math.max(highlightPreview.length, 1))}
+              disabled={highlightPreview.length <= 1}
+              className="inline-flex items-center gap-2 border border-line-soft px-3 py-2 text-xs text-ink-soft transition-colors hover:text-ink-deep disabled:cursor-default disabled:opacity-60"
+              title="换一条大众高频划线"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              大众高频划线
+            </button>
           </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {highlightPreview.map(highlight => {
-              const book = data.books.find(item => item.id === highlight.bookId);
-              return (
-                <a key={highlight.id} href={book?.deepLink || wereadSearchUrl(book?.title || highlight.content.slice(0, 12))} target="_blank" rel="noopener noreferrer" className="block transition-transform hover:-translate-y-1">
-                  <HighlightQuote highlight={highlight} book={book} compact />
+          <div className="mt-6">
+            {currentHighlight ? (
+              <div className="relative transition-transform hover:-translate-y-1">
+                <a href={currentHighlightBook?.deepLink || currentHighlight.bookDeepLink || wereadSearchUrl(currentHighlight.bookTitle || currentHighlight.content.slice(0, 12))} target="_blank" rel="noopener noreferrer" className="block">
+                  <HighlightQuote highlight={currentHighlight} book={currentHighlightBook} compact showSourceLabel={false} showDate={false} />
                 </a>
-              );
-            })}
+                {(relatedHighlightRecommendation || currentHighlight.bookDeepLink || currentHighlight.bookTitle) && (
+                  <a
+                    href={relatedHighlightRecommendation?.deepLink || currentHighlight.bookDeepLink || wereadSearchUrl(relatedHighlightRecommendation?.title || currentHighlight.bookTitle || currentHighlight.content.slice(0, 12))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`打开相关推荐：《${relatedHighlightRecommendation?.title || currentHighlight.bookTitle || '相关书籍'}》`}
+                    aria-label={`打开相关推荐《${relatedHighlightRecommendation?.title || currentHighlight.bookTitle || '相关书籍'}》`}
+                    className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center border border-line-soft/50 bg-paper-warm/90 text-ink-soft transition-colors hover:text-sprout-green"
+                  >
+                    <ArrowUpRight className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            ) : <p className="border-l-2 border-line-soft px-4 py-5 text-sm leading-7 text-ink-soft">同步微信读书后，这里会展示你最近阅读书籍里的大众高频划线。</p>}
           </div>
         </section>
 
@@ -241,6 +312,11 @@ export default function DiscoverPage() {
                       <span className="text-xs text-ink-soft" style={{ fontFamily: 'var(--font-number)' }}>证据匹配 {Math.round(recommendation.confidence * 100)}%</span>
                     </div>
                     <p className="mt-5 max-w-3xl text-sm leading-7 text-ink-deep">{recommendation.reason}</p>
+                    {recommendation.description && (
+                      <p className="mt-3 max-w-3xl border-l-2 border-water-blue/45 pl-4 text-sm leading-7 text-ink-soft">
+                        内容与主题：{recommendation.description}
+                      </p>
+                    )}
                     <div className="mt-4 flex flex-wrap gap-2">
                       {recommendation.evidence.map((evidence, evidenceIndex) => (
                         <span key={`${evidence.type}-${evidenceIndex}`} className="text-xs text-ink-soft">

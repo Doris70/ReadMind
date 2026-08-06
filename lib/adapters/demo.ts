@@ -45,6 +45,8 @@ function createDemoCover(book: Book): string {
 }
 
 const demoHighlights: Highlight[] = [
+  { id: 'public-h1', bookId: 'public_demo_complex', sourceBookId: 'demo-complex', bookTitle: '复杂', bookAuthor: '梅拉妮·米歇尔', chapter: '大众高频划线', content: '复杂系统由相互作用的部分构成，整体行为往往无法从局部直接推断。', createdAt: '2026-07-29', source: 'weread_public', isFeatured: true, topicTags: ['技术与系统'] },
+  { id: 'public-h2', bookId: 'public_demo_why', sourceBookId: 'demo-why', bookTitle: '为什么：关于因果关系的新科学', bookAuthor: '朱迪亚·珀尔', chapter: '大众高频划线', content: '真正重要的不是答案，而是你如何继续提出问题。', createdAt: '2026-07-28', source: 'weread_public', isFeatured: true, topicTags: ['认知偏差'] },
   { id: 'h1', bookId: 'b1', chapter: '第二章', content: '我们对自己的判断和选择，往往比我们愿意承认的更受情境的影响。', thought: '这和日常经验完全吻合，很多时候我们以为的理性决策其实都是事后合理化。', createdAt: '2026-07-20', source: 'weread_personal', isFeatured: true, topicTags: ['认知偏差', '社会影响'] },
   { id: 'h2', bookId: 'b1', chapter: '第四章', content: '态度并不总是能预测行为，但行为可以改变态度。', thought: '认知失调的力量。', createdAt: '2026-07-15', source: 'weread_personal', isFeatured: false, topicTags: ['态度行为关系'] },
   { id: 'h3', bookId: 'b2', chapter: '第一部分', content: '在银河系的西旋臂端，有一颗不起眼的黄色恒星，它的第三颗行星上，生命正在缓慢地演化。', createdAt: '2026-07-10', source: 'weread_personal', isFeatured: true, topicTags: ['宇宙', '文明'] },

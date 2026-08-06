@@ -12,6 +12,7 @@ import {
   Quote,
   Sparkles,
   Tag,
+  Trash2,
   X,
 } from 'lucide-react';
 import BookCover from '@/components/ui/BookCover';
@@ -25,6 +26,7 @@ interface Props {
   highlights: Highlight[];
   nextRecommendation?: Recommendation | null;
   onBookUpdate?: (book: Book) => void;
+  onBookDelete?: (bookId: string) => void;
   onClose: () => void;
 }
 
@@ -44,9 +46,10 @@ function dateSourceLabel(source: Book['dateSource']): string {
   return '根据阅读痕迹推断';
 }
 
-export default function BookDetailDrawer({ book, highlights, nextRecommendation, onBookUpdate, onClose }: Props) {
+export default function BookDetailDrawer({ book, highlights, nextRecommendation, onBookUpdate, onBookDelete, onClose }: Props) {
   const [highlightFilter, setHighlightFilter] = useState<HighlightFilter>('all');
   const [draftBook, setDraftBook] = useState(book);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const bookHighlights = useMemo(() => getBookHighlights(highlights, book.id), [book.id, highlights]);
   const featuredHighlights = useMemo(() => getTopHighlights(bookHighlights, 3), [bookHighlights]);
   const summary = useMemo(() => generateBookSummary(book, bookHighlights), [book, bookHighlights]);
@@ -93,10 +96,33 @@ export default function BookDetailDrawer({ book, highlights, nextRecommendation,
             <span className="ink-label">BOOK TRACE / {book.category}</span>
             <span className="hidden text-xs text-ink-soft sm:inline">阅读档案</span>
           </div>
-          <button className="icon-button shrink-0" onClick={onClose} title="关闭详情" aria-label="关闭详情">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onBookDelete && (
+              <button className="icon-button shrink-0 hover:border-dust-rose hover:text-dust-rose" onClick={() => setConfirmDelete(true)} title="删除这本书" aria-label="删除这本书">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+            <button className="icon-button shrink-0" onClick={onClose} title="关闭详情" aria-label="关闭详情">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </header>
+
+        {confirmDelete && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-ink-deep/25 p-5 backdrop-blur-sm">
+            <div className="w-full max-w-sm border border-line-soft/50 bg-paper-warm p-6 shadow-[0_22px_70px_rgba(38,59,53,0.2)]">
+              <span className="ink-label">DELETE BOOK TRACE</span>
+              <h2 className="mt-3 text-2xl text-ink-deep" style={{ fontFamily: 'var(--font-display)' }}>删除《{book.title}》？</h2>
+              <p className="mt-3 text-sm leading-7 text-ink-soft">这会同时删除这本书的阅读档案、关联划线与阅读事件，操作无法撤销。</p>
+              <div className="mt-6 flex justify-end gap-2">
+                <button onClick={() => setConfirmDelete(false)} className="border border-line-soft px-4 py-2 text-sm text-ink-soft hover:bg-paper-light">取消</button>
+                <button onClick={() => onBookDelete?.(book.id)} className="inline-flex items-center gap-2 bg-dust-rose px-4 py-2 text-sm text-white hover:bg-dust-rose/90">
+                  <Trash2 className="h-3.5 w-3.5" /> 确认删除
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="px-5 py-7 sm:px-8">
           <section className="grid gap-6 border-b border-line-soft/35 pb-8 sm:grid-cols-[112px_1fr]">

@@ -16,7 +16,7 @@ import {
   UserData,
   formatReadingTime,
 } from '@/lib/adapters/types';
-import { addStoredBook, loadUserData, recordBookOpened, updateStoredBook } from '@/lib/store';
+import { addStoredBook, loadUserData, recordBookOpened, removeStoredBook, updateStoredBook } from '@/lib/store';
 import { generateRecommendations, selectRecommendationForBook } from '@/lib/ai';
 import { getCategoryInsights, getReadingStats, parseLocalDate } from '@/lib/insights';
 
@@ -222,6 +222,12 @@ function TimelineContent() {
       setData(next);
       setSelectedBook(book);
     }
+  };
+
+  const deleteBook = (bookId: string) => {
+    const next = removeStoredBook(bookId);
+    if (next) setData(next);
+    setSelectedBook(null);
   };
 
   const saveNewBook = () => {
@@ -575,6 +581,7 @@ function TimelineContent() {
           highlights={data.highlights.filter(highlight => highlight.bookId === selectedBook.id)}
           nextRecommendation={selectedBookRecommendation}
           onBookUpdate={updateBook}
+          onBookDelete={deleteBook}
           onClose={() => setSelectedBook(null)}
         />
       )}

@@ -26,6 +26,10 @@ export interface Book {
 export interface Highlight {
   id: string;
   bookId: string;
+  sourceBookId?: string;
+  bookTitle?: string;
+  bookAuthor?: string;
+  bookDeepLink?: string;
   chapter: string;
   content: string;
   thought?: string;
@@ -47,6 +51,9 @@ export interface Recommendation {
   title: string;
   author: string;
   coverUrl?: string;
+  deepLink?: string;
+  description?: string;
+  sourceBookId?: string;
   category: Category;
   reason: string;
   evidence: { type: 'topic' | 'book'; value: string }[];
@@ -69,6 +76,7 @@ export interface ReadingPersona {
   highlightCount: number;
   representativeHighlight: string;
   suggestion: string;
+  monthlyReadingSeconds?: number;
 }
 
 export interface UserData {

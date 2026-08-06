@@ -11,7 +11,7 @@ import BookDetailDrawer from '@/components/book/BookDetailDrawer';
 import HighlightQuote from '@/components/insights/HighlightQuote';
 import BookCover from '@/components/ui/BookCover';
 import { Book, Highlight, CATEGORY_COLORS, formatReadingTime, UserData } from '@/lib/adapters/types';
-import { loadRecentOpenedBooks, loadUserData, recordBookOpened, updateStoredBook } from '@/lib/store';
+import { loadRecentOpenedBooks, loadUserData, recordBookOpened, removeStoredBook, updateStoredBook } from '@/lib/store';
 import { selectDailyQuote, selectRecommendationForBook } from '@/lib/ai';
 import { getCategoryInsights, getReadingStats, getTopHighlights } from '@/lib/insights';
 
@@ -22,6 +22,22 @@ function getHomeMonthStats(data: UserData) {
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   return getReadingStats(data.books.filter(book => book.lastReadDate?.startsWith(monthKey)));
+}
+
+function getBookOpenedAt(book: Book, recentOpenedMap: Record<string, string>): string {
+  return recentOpenedMap[book.id]
+    || (book.sourceBookId ? recentOpenedMap[book.sourceBookId] : '')
+    || '';
+}
+
+function compareRecentBookOpened(a: Book, b: Book, recentOpenedMap: Record<string, string>): number {
+  const aLastReadAt = Date.parse(a.lastReadDate || '') || 0;
+  const bLastReadAt = Date.parse(b.lastReadDate || '') || 0;
+  if (aLastReadAt !== bLastReadAt) return bLastReadAt - aLastReadAt;
+
+  const aOpenedAt = Date.parse(getBookOpenedAt(a, recentOpenedMap)) || 0;
+  const bOpenedAt = Date.parse(getBookOpenedAt(b, recentOpenedMap)) || 0;
+  return bOpenedAt - aOpenedAt;
 }
 
 export default function HomePage() {
@@ -51,7 +67,8 @@ export default function HomePage() {
     }
     setData(stored);
     setRecentOpenedMap(Object.fromEntries(loadRecentOpenedBooks().map(item => [item.bookId, item.openedAt])));
-    const quote = selectDailyQuote(stored.highlights);
+    const personalHighlights = stored.highlights.filter(highlight => highlight.source === 'weread_personal');
+    const quote = selectDailyQuote(personalHighlights.length > 0 ? personalHighlights : stored.highlights);
     setDailyQuote(quote);
     setQuoteBook(quote ? stored.books.find(book => book.id === quote.bookId) || null : null);
   }, []);
@@ -83,10 +100,7 @@ export default function HomePage() {
     if (!data) return [];
     return [...data.books]
       .filter(book => book.status !== 'unstarted')
-      .sort((a, b) => {
-        const opened = (recentOpenedMap[b.id] || '').localeCompare(recentOpenedMap[a.id] || '');
-        return opened || (b.lastReadDate || '').localeCompare(a.lastReadDate || '');
-      })
+      .sort((a, b) => compareRecentBookOpened(a, b, recentOpenedMap))
       .slice(0, 6);
   }, [data, recentOpenedMap]);
 
@@ -100,7 +114,8 @@ export default function HomePage() {
   const primaryBook = readingBooks[0] || recentBooks[0] || null;
 
   const refreshQuote = () => {
-    const candidates = data.highlights.length > 0 ? data.highlights : [];
+    const personalHighlights = data.highlights.filter(highlight => highlight.source === 'weread_personal');
+    const candidates = personalHighlights.length > 0 ? personalHighlights : data.highlights;
     if (candidates.length === 0) return;
     const currentIndex = candidates.findIndex(highlight => highlight.id === dailyQuote?.id);
     const next = candidates[(currentIndex + 1) % candidates.length];
@@ -120,6 +135,12 @@ export default function HomePage() {
       setData(next);
       setSelectedBook(book);
     }
+  };
+
+  const deleteBook = (bookId: string) => {
+    const next = removeStoredBook(bookId);
+    if (next) setData(next);
+    setSelectedBook(null);
   };
 
   return (
@@ -293,6 +314,7 @@ export default function HomePage() {
           highlights={data.highlights.filter(highlight => highlight.bookId === selectedBook.id)}
           nextRecommendation={selectedBookRecommendation}
           onBookUpdate={updateBook}
+          onBookDelete={deleteBook}
           onClose={() => setSelectedBook(null)}
         />
       )}
