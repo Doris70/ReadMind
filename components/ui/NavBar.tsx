@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { BookOpen, Compass, Network, Settings2, Sprout, User } from 'lucide-react';
 
 const navItems = [
-  { href: '/', label: '首页', icon: Sprout },
+  { href: '/home', label: '首页', icon: Sprout },
   { href: '/timeline', label: '书迹轴', icon: BookOpen },
   { href: '/knowledge', label: '知识地图', icon: Network },
   { href: '/discover', label: '发现', icon: Compass },
@@ -18,7 +18,7 @@ export default function NavBar() {
   return (
     <nav className="top-nav sticky top-0 z-50 border-b border-line-soft/20 bg-paper-mist/80 backdrop-blur-md">
       <div className="max-w-[1280px] mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold text-ink-deep tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>
+        <Link href="/home" className="text-xl font-bold text-ink-deep tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>
           ReadMind
         </Link>
         <div className="flex items-center gap-1">

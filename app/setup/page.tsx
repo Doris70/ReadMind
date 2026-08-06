@@ -98,7 +98,7 @@ export default function SetupPage() {
     const data = loadDemoData();
     saveUserData(data);
     clearManualBooksDraft();
-    router.push('/');
+    router.push('/home');
   };
 
   const handleConnect = async () => {
@@ -140,7 +140,7 @@ export default function SetupPage() {
       saveUserData(next);
       clearManualBooksDraft();
       setExistingData(next);
-      router.push('/');
+      router.push('/home');
     }
   };
 
@@ -221,14 +221,14 @@ export default function SetupPage() {
     saveUserData(data);
     clearManualBooksDraft();
     setExistingData(data);
-    router.push('/');
+    router.push('/home');
   };
 
   const handleDirectManualEntry = () => {
     const manualData = loadManualData();
     if (!manualData || manualData.books.length === 0) return;
     saveUserData(manualData);
-    router.push('/');
+    router.push('/home');
   };
 
   return (
